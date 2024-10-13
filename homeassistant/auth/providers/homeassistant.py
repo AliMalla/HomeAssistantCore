@@ -9,6 +9,7 @@ import logging
 from typing import Any, cast
 
 import bcrypt
+import os
 import voluptuous as vol
 
 from homeassistant.const import CONF_ID
@@ -163,7 +164,8 @@ class Data:
         Raises InvalidAuth if auth invalid.
         """
         username = self.normalize_username(username)
-        dummy = b"$2b$12$CiuFGszHx9eNHxPuQcwBWez4CwDTOcLTX5CbOpV6gef2nYuXkY7BO"
+        #dummy = b"$2b$12$CiuFGszHx9eNHxPuQcwBWez4CwDTOcLTX5CbOpV6gef2nYuXkY7BO"
+        dummy = bcrypt.hashpw(b"dummy_password", bcrypt.gensalt())
         found = None
 
         # Compare all users to avoid timing attacks.
@@ -173,7 +175,11 @@ class Data:
 
         if found is None:
             # check a hash to make timing the same as if user was found
-            bcrypt.checkpw(b"foo", dummy)
+            # taking a random 16 byte value
+            random_value = os.urandom(16)
+            bcrypt.checkpw(random_value, dummy)
+
+            #bcrypt.checkpw(b"foo", dummy)
             raise InvalidAuth
 
         user_hash = base64.b64decode(found["password"])
