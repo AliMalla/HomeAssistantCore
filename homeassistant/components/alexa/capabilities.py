@@ -1426,75 +1426,60 @@ class AlexaModeController(AlexaCapability):
         return True
 
     def get_property(self, name: str) -> Any:
-        """Read and return a property."""
-        if name != "mode":
-            raise UnsupportedProperty(name)
+    """Read and return a property."""
+      if name != "mode":
+        raise UnsupportedProperty(name)
 
-        # Fan Direction
-        if self.instance == f"{fan.DOMAIN}.{fan.ATTR_DIRECTION}":
-            mode = self.entity.attributes.get(fan.ATTR_DIRECTION, None)
-            if mode in (fan.DIRECTION_FORWARD, fan.DIRECTION_REVERSE, STATE_UNKNOWN):
-                return f"{fan.ATTR_DIRECTION}.{mode}"
+    # Fan Direction
+      if self._get_fan_mode(fan.DOMAIN, fan.ATTR_DIRECTION, [fan.DIRECTION_FORWARD, fan.DIRECTION_REVERSE, STATE_UNKNOWN]):
+        return f"{fan.ATTR_DIRECTION}.{self.entity.attributes.get(fan.ATTR_DIRECTION)}"
 
-        # Fan preset_mode
-        if self.instance == f"{fan.DOMAIN}.{fan.ATTR_PRESET_MODE}":
-            mode = self.entity.attributes.get(fan.ATTR_PRESET_MODE, None)
-            if mode in self.entity.attributes.get(fan.ATTR_PRESET_MODES, None):
-                return f"{fan.ATTR_PRESET_MODE}.{mode}"
+    # Fan preset_mode
+      if self._get_fan_mode(fan.DOMAIN, fan.ATTR_PRESET_MODE, self.entity.attributes.get(fan.ATTR_PRESET_MODES, [])):
+        return f"{fan.ATTR_PRESET_MODE}.{self.entity.attributes.get(fan.ATTR_PRESET_MODE)}"
 
-        # Humidifier mode
-        if self.instance == f"{humidifier.DOMAIN}.{humidifier.ATTR_MODE}":
-            mode = self.entity.attributes.get(humidifier.ATTR_MODE)
-            modes: list[str] = (
-                self.entity.attributes.get(humidifier.ATTR_AVAILABLE_MODES) or []
-            )
-            if mode in modes:
-                return f"{humidifier.ATTR_MODE}.{mode}"
+    # Humidifier mode
+      if self._get_humidifier_mode():
+        return f"{humidifier.ATTR_MODE}.{self.entity.attributes.get(humidifier.ATTR_MODE)}"
 
-        # Remote Activity
-        if self.instance == f"{remote.DOMAIN}.{remote.ATTR_ACTIVITY}":
-            activity = self.entity.attributes.get(remote.ATTR_CURRENT_ACTIVITY, None)
-            if activity in self.entity.attributes.get(remote.ATTR_ACTIVITY_LIST, []):
-                return f"{remote.ATTR_ACTIVITY}.{activity}"
+    # Remote Activity
+      if self._get_remote_activity():
+        return f"{remote.ATTR_ACTIVITY}.{self.entity.attributes.get(remote.ATTR_CURRENT_ACTIVITY)}"
 
-        # Water heater operation mode
-        if self.instance == f"{water_heater.DOMAIN}.{water_heater.ATTR_OPERATION_MODE}":
-            operation_mode = self.entity.attributes.get(
-                water_heater.ATTR_OPERATION_MODE
-            )
-            operation_modes: list[str] = (
-                self.entity.attributes.get(water_heater.ATTR_OPERATION_LIST) or []
-            )
-            if operation_mode in operation_modes:
-                return f"{water_heater.ATTR_OPERATION_MODE}.{operation_mode}"
+    # Water heater operation mode
+      if self._get_water_heater_mode():
+        return f"{water_heater.ATTR_OPERATION_MODE}.{self.entity.attributes.get(water_heater.ATTR_OPERATION_MODE)}"
 
-        # Cover Position
-        if self.instance == f"{cover.DOMAIN}.{cover.ATTR_POSITION}":
-            # Return state instead of position when using ModeController.
-            mode = self.entity.state
-            if mode in (
-                cover.STATE_OPEN,
-                cover.STATE_OPENING,
-                cover.STATE_CLOSED,
-                cover.STATE_CLOSING,
-                STATE_UNKNOWN,
-            ):
-                return f"{cover.ATTR_POSITION}.{mode}"
+    # Cover Position
+      if self._get_position_state(cover.DOMAIN, cover.ATTR_POSITION, [cover.STATE_OPEN, cover.STATE_OPENING, cover.STATE_CLOSED, cover.STATE_CLOSING, STATE_UNKNOWN]):
+        return f"{cover.ATTR_POSITION}.{self.entity.state}"
 
-        # Valve position state
-        if self.instance == f"{valve.DOMAIN}.state":
-            # Return state instead of position when using ModeController.
-            state = self.entity.state
-            if state in (
-                valve.STATE_OPEN,
-                valve.STATE_OPENING,
-                valve.STATE_CLOSED,
-                valve.STATE_CLOSING,
-                STATE_UNKNOWN,
-            ):
-                return f"state.{state}"
+    # Valve position state
+      if self._get_position_state(valve.DOMAIN, valve.ATTR_POSITION, [valve.STATE_OPEN, valve.STATE_OPENING, valve.STATE_CLOSED, valve.STATE_CLOSING, STATE_UNKNOWN]):
+        return f"state.{self.entity.state}"
 
-        return None
+      return None
+
+    def _get_fan_mode(self, domain: str, attr: str, valid_modes: list) -> bool:
+    """Helper to return fan mode."""
+      return self.instance == f"{domain}.{attr}" and self.entity.attributes.get(attr) in valid_modes
+
+    def _get_humidifier_mode(self) -> bool:
+    """Helper to return humidifier mode."""
+      return self.instance == f"{humidifier.DOMAIN}.{humidifier.ATTR_MODE}" and self.entity.attributes.get(humidifier.ATTR_MODE) in self.entity.attributes.get(humidifier.ATTR_AVAILABLE_MODES, [])
+
+    def _get_remote_activity(self) -> bool:
+    """Helper to return remote activity."""
+      return self.instance == f"{remote.DOMAIN}.{remote.ATTR_ACTIVITY}" and self.entity.attributes.get(remote.ATTR_CURRENT_ACTIVITY) in self.entity.attributes.get(remote.ATTR_ACTIVITY_LIST, [])
+
+    def _get_water_heater_mode(self) -> bool:
+    """Helper to return water heater operation mode."""
+      return self.instance == f"{water_heater.DOMAIN}.{water_heater.ATTR_OPERATION_MODE}" and self.entity.attributes.get(water_heater.ATTR_OPERATION_MODE) in self.entity.attributes.get(water_heater.ATTR_OPERATION_LIST, [])
+
+    def _get_position_state(self, domain: str, attr: str, valid_states: list) -> bool:
+    """Helper to return cover or valve position."""
+       return self.instance == f"{domain}.{attr}" and self.entity.state in valid_states
+
 
     def configuration(self) -> dict[str, Any] | None:
         """Return configuration with modeResources."""
