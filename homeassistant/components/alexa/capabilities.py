@@ -1769,10 +1769,15 @@ class AlexaRangeController(AlexaCapability):
 
         # Fan speed percentage
         if self.instance == f"{fan.DOMAIN}.{fan.ATTR_PERCENTAGE}":
-            supported = self.entity.attributes.get(ATTR_SUPPORTED_FEATURES, 0)
-            if supported and fan.FanEntityFeature.SET_SPEED:
-                return self.entity.attributes.get(fan.ATTR_PERCENTAGE)
-            return 100 if self.entity.state == fan.STATE_ON else 0
+            return self._get_fan_percentage()
+
+        def _get_fan_percentage(self) -> int:
+           """Helper function to get fan speed percentage."""
+           supported = self.entity.attributes.get(ATTR_SUPPORTED_FEATURES, 0)
+           if supported and fan.FanEntityFeature.SET_SPEED:
+               return self.entity.attributes.get(fan.ATTR_PERCENTAGE)
+           return 100 if self.entity.state == fan.STATE_ON else 0
+
 
         # Humidifier target humidity
         if self.instance == f"{humidifier.DOMAIN}.{humidifier.ATTR_HUMIDITY}":
@@ -1790,10 +1795,18 @@ class AlexaRangeController(AlexaCapability):
 
         # Vacuum Fan Speed
         if self.instance == f"{vacuum.DOMAIN}.{vacuum.ATTR_FAN_SPEED}":
+            return self._get_vacuum_fan_speed()
+
+        def _get_vacuum_fan_speed(self) -> Any:
+           """Helper function to get vacuum fan speed."""
             speed_list = self.entity.attributes.get(vacuum.ATTR_FAN_SPEED_LIST)
             speed = self.entity.attributes.get(vacuum.ATTR_FAN_SPEED)
+    
             if speed_list is not None and speed is not None:
-                return next((i for i, v in enumerate(speed_list) if v == speed), None)
+               return next((i for i, v in enumerate(speed_list) if v == speed), None)
+    
+            return None
+
 
         # Valve Position
         if self.instance == f"{valve.DOMAIN}.{valve.ATTR_POSITION}":
