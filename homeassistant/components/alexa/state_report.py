@@ -273,21 +273,33 @@ async def async_enable_proactive_mode(
 
     @callback
     def _async_entity_state_filter(data: EventStateChangedData) -> bool:
-        if not hass.is_running:
-            return False
+    """Filter entity state changes based on various conditions."""
+      if not hass.is_running:
+        return False
 
-        if not (new_state := data["new_state"]):
-            return False
+      new_state = data.get("new_state")
+      if not _is_valid_new_state(new_state):
+        return False
 
-        if new_state.domain not in ENTITY_ADAPTERS:
-            return False
+      changed_entity = data["entity_id"]
+       if not _should_expose_entity(new_state, changed_entity):
+         return False
 
-        changed_entity = data["entity_id"]
-        if not smart_home_config.should_expose(changed_entity):
-            _LOGGER.debug("Not exposing %s because filtered by config", changed_entity)
-            return False
+      return True
 
-        return True
+     def _is_valid_new_state(new_state: Any) -> bool:
+    """Check if the new state is valid."""
+       return new_state and new_state.domain in ENTITY_ADAPTERS
+
+     def _should_expose_entity(new_state: Any, changed_entity: str) -> bool:
+    """Check if the entity should be exposed based on config."""
+       if not smart_home_config.should_expose(changed_entity):
+        _LOGGER.debug(
+            "Not exposing %s because filtered by config", changed_entity
+        )
+         return False
+      return True
+
 
     async def _async_entity_state_listener(
         event_: Event[EventStateChangedData],
