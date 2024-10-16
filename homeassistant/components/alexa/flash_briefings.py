@@ -102,24 +102,23 @@ class AlexaFlashBriefingView(http.HomeAssistantView):
                 uid = str(uuid.uuid4())
             output[ATTR_UID] = uid
 
+            def _process_conf_item(self, item, conf_key, attr_key, output):
+               """Helper to process the CONF_AUDIO and CONF_DISPLAY_URL logic."""
+               if item.get(conf_key) is not None:
+               if isinstance(item.get(conf_key), template.Template):
+                  output[attr_key] = item[conf_key].async_render(parse_result=False)
+               else:
+                  output[attr_key] = item.get(conf_key)
+
+            # Main logic
             if item.get(CONF_AUDIO) is not None:
-                if isinstance(item.get(CONF_AUDIO), template.Template):
-                    output[ATTR_STREAM_URL] = item[CONF_AUDIO].async_render(
-                        parse_result=False
-                    )
-                else:
-                    output[ATTR_STREAM_URL] = item.get(CONF_AUDIO)
+                self._process_conf_item(item, CONF_AUDIO, ATTR_STREAM_URL, output)
 
             if item.get(CONF_DISPLAY_URL) is not None:
-                if isinstance(item.get(CONF_DISPLAY_URL), template.Template):
-                    output[ATTR_REDIRECTION_URL] = item[CONF_DISPLAY_URL].async_render(
-                        parse_result=False
-                    )
-                else:
-                    output[ATTR_REDIRECTION_URL] = item.get(CONF_DISPLAY_URL)
+                self._process_conf_item(item, CONF_DISPLAY_URL, ATTR_REDIRECTION_URL, output)
 
             output[ATTR_UPDATE_DATE] = dt_util.utcnow().strftime(DATE_FORMAT)
-
             briefing.append(output)
 
-        return self.json(briefing)
+            return self.json(briefing)
+
