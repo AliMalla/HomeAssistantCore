@@ -1650,7 +1650,9 @@ async def async_api_adjust_range(
 
 
 #Helper functiton
-def adjust_range_cover_position(entity, range_delta: int, range_delta_default: bool) -> tuple[str, dict, int]:
+def adjust_range_cover_position(
+    entity, range_delta: int, range_delta_default: bool
+) -> tuple[str, dict, int]:
     """Handle the cover position logic and return the service, data, and position."""
     range_delta_updated = int(range_delta * 20) if range_delta_default else int(range_delta)
     current_position = entity.attributes.get(cover.ATTR_CURRENT_POSITION)
