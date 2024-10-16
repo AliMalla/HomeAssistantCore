@@ -788,7 +788,7 @@ class BrSensor(SensorEntity):
                 new_state = condition.get(DETAILED)
             if sensor_type.startswith("conditionexact"):
                 new_state = condition.get(EXACT)
-            return new_state
+        return new_state
         
     def symbol_or_condition(self, condition, sensor_type):
         if condition:
@@ -812,11 +812,58 @@ class BrSensor(SensorEntity):
 
         return False
 
+    def load_forecast_day(self, sensor_type, data):
+        FORECAST_MESSAGE = "No forecast for fcday="
+
+        # update forecasting sensors:
+        fcday = self.getFCday(sensor_type)
+
+        # update weather symbol & status text
+        if sensor_type.startswith((SYMBOL, CONDITION)):
+            try:
+                condition = data.get(FORECAST)[fcday].get(CONDITION)
+            except IndexError:
+                _LOGGER.warning("%s%s", FORECAST_MESSAGE,fcday)
+                return False
+
+            if condition:
+                new_state = self.get_new_state(condition, sensor_type)
+                img = condition.get(IMAGE)
+
+                if new_state != self.state or img != self.entity_picture:
+                    self._attr_native_value = new_state
+                    self._attr_entity_picture = img
+                    return True
+            return False
+
+        if sensor_type.startswith(WINDSPEED):
+            # hass wants windspeeds in km/h not m/s, so convert:
+            try:
+                self._attr_native_value = data.get(FORECAST)[fcday].get(
+                    sensor_type[:-3]
+                )
+            except IndexError:
+                _LOGGER.warning("%s%s", FORECAST_MESSAGE,fcday)
+                return False
+
+            if self.state is not None:
+                self._attr_native_value = round(self.state * 3.6, 1)
+            return True
+
+        # update all other sensors
+        try:
+            self._attr_native_value = data.get(FORECAST)[fcday].get(
+                sensor_type[:-3]
+            )
+        except IndexError:
+            _LOGGER.warning("%s%s", FORECAST_MESSAGE,fcday)
+            return False
+        return True
+
     @callback
     def _load_data(self, data):  # noqa: C901
         """Load the sensor with relevant data."""
         # Find sensor
-        FORECAST_MESSAGE = "No forecast for fcday="
 
         # Check if we have a new measurement,
         # otherwise we do not have to update the sensor
@@ -827,50 +874,7 @@ class BrSensor(SensorEntity):
         sensor_type = self.entity_description.key
 
         if sensor_type.endswith(("_1d", "_2d", "_3d", "_4d", "_5d")):
-            # update forecasting sensors:
-            fcday = self.getFCday(sensor_type)
-
-            # update weather symbol & status text
-            if sensor_type.startswith((SYMBOL, CONDITION)):
-                try:
-                    condition = data.get(FORECAST)[fcday].get(CONDITION)
-                except IndexError:
-                    _LOGGER.warning("%s%s", FORECAST_MESSAGE,fcday)
-                    return False
-
-                if condition:
-                    new_state = self.get_new_state(condition)
-                    img = condition.get(IMAGE)
-
-                    if new_state != self.state or img != self.entity_picture:
-                        self._attr_native_value = new_state
-                        self._attr_entity_picture = img
-                        return True
-                return False
-
-            if sensor_type.startswith(WINDSPEED):
-                # hass wants windspeeds in km/h not m/s, so convert:
-                try:
-                    self._attr_native_value = data.get(FORECAST)[fcday].get(
-                        sensor_type[:-3]
-                    )
-                except IndexError:
-                    _LOGGER.warning("%s%s", FORECAST_MESSAGE,fcday)
-                    return False
-
-                if self.state is not None:
-                    self._attr_native_value = round(self.state * 3.6, 1)
-                return True
-
-            # update all other sensors
-            try:
-                self._attr_native_value = data.get(FORECAST)[fcday].get(
-                    sensor_type[:-3]
-                )
-            except IndexError:
-                _LOGGER.warning("%s%s", FORECAST_MESSAGE,fcday)
-                return False
-            return True
+            return self.load_forecast_day(sensor_type, data)
 
         if sensor_type == SYMBOL or sensor_type.startswith(CONDITION):
             # update weather symbol & status text
@@ -920,4 +924,3 @@ class BrSensor(SensorEntity):
 
         self._attr_extra_state_attributes = result
         return True
-    
