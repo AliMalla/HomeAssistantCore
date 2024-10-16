@@ -53,7 +53,7 @@ async def verify_redirect_uri(
 
     # IndieAuth 4.2.2 allows for redirect_uri to be on different domain
     # but needs to be specified in link tag when fetching `client_id`.
-    redirect_uris = await fetch_redirect_uris(hass, client_id)
+    redirect_uris = await fetch_redirect_uris(client_id)
     return redirect_uri in redirect_uris
 
 
@@ -77,7 +77,7 @@ class LinkTagParser(HTMLParser):
             self.found.append(attributes.get("href"))
 
 
-async def fetch_redirect_uris(hass: HomeAssistant, url: str) -> list[str]:
+async def fetch_redirect_uris(url: str) -> list[str]:
     """Find link tag with redirect_uri values.
 
     IndieAuth 4.2.2
