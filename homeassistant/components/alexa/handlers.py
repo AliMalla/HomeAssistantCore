@@ -1184,77 +1184,27 @@ async def async_api_set_mode(
 
     # Fan preset_mode
     elif instance == f"{fan.DOMAIN}.{fan.ATTR_PRESET_MODE}":
-        preset_mode = mode.split(".")[1]
-        preset_modes: list[str] | None = entity.attributes.get(fan.ATTR_PRESET_MODES)
-        if (
-            preset_mode != PRESET_MODE_NA
-            and preset_modes
-            and preset_mode in preset_modes
-        ):
-            service = fan.SERVICE_SET_PRESET_MODE
-            data[fan.ATTR_PRESET_MODE] = preset_mode
-        else:
-            msg = f"Entity '{entity.entity_id}' does not support Preset '{preset_mode}'"
-            raise AlexaInvalidValueError(msg)
+        service, data = set_mode_fan_preset_mode(mode, entity)
 
     # Humidifier mode
     elif instance == f"{humidifier.DOMAIN}.{humidifier.ATTR_MODE}":
-        mode = mode.split(".")[1]
-        modes: list[str] | None = entity.attributes.get(humidifier.ATTR_AVAILABLE_MODES)
-        if mode != PRESET_MODE_NA and modes and mode in modes:
-            service = humidifier.SERVICE_SET_MODE
-            data[humidifier.ATTR_MODE] = mode
-        else:
-            msg = f"Entity '{entity.entity_id}' does not support Mode '{mode}'"
-            raise AlexaInvalidValueError(msg)
+        service, data = set_mode_humidifier_mode(mode, entity)
 
     # Remote Activity
     elif instance == f"{remote.DOMAIN}.{remote.ATTR_ACTIVITY}":
-        activity = mode.split(".")[1]
-        activities: list[str] | None = entity.attributes.get(remote.ATTR_ACTIVITY_LIST)
-        if activity != PRESET_MODE_NA and activities and activity in activities:
-            service = remote.SERVICE_TURN_ON
-            data[remote.ATTR_ACTIVITY] = activity
-        else:
-            msg = f"Entity '{entity.entity_id}' does not support Mode '{mode}'"
-            raise AlexaInvalidValueError(msg)
+        service, data = set_mode_remote_activity(mode, entity)
 
     # Water heater operation mode
     elif instance == f"{water_heater.DOMAIN}.{water_heater.ATTR_OPERATION_MODE}":
-        operation_mode = mode.split(".")[1]
-        operation_modes: list[str] | None = entity.attributes.get(
-            water_heater.ATTR_OPERATION_LIST
-        )
-        if (
-            operation_mode != PRESET_MODE_NA
-            and operation_modes
-            and operation_mode in operation_modes
-        ):
-            service = water_heater.SERVICE_SET_OPERATION_MODE
-            data[water_heater.ATTR_OPERATION_MODE] = operation_mode
-        else:
-            msg = f"Entity '{entity.entity_id}' does not support Operation mode '{operation_mode}'"
-            raise AlexaInvalidValueError(msg)
-
-    # Cover Position
+        service, data = set_mode_water_heater_operation_mode(mode, entity)
+    
+    # Handle Cover Position
     elif instance == f"{cover.DOMAIN}.{cover.ATTR_POSITION}":
-        position = mode.split(".")[1]
+        service, data = set_mode_cover_position(mode, entity)
 
-        if position == cover.STATE_CLOSED:
-            service = cover.SERVICE_CLOSE_COVER
-        elif position == cover.STATE_OPEN:
-            service = cover.SERVICE_OPEN_COVER
-        elif position == "custom":
-            service = cover.SERVICE_STOP_COVER
-
-    # Valve position state
+    # Handle Valve Position
     elif instance == f"{valve.DOMAIN}.state":
-        position = mode.split(".")[1]
-
-        if position == valve.STATE_CLOSED:
-            service = valve.SERVICE_CLOSE_VALVE
-        elif position == valve.STATE_OPEN:
-            service = valve.SERVICE_OPEN_VALVE
+        service, data = set_mode_valve_position(mode, entity)
 
     if not service:
         raise AlexaInvalidDirectiveError(DIRECTIVE_NOT_SUPPORTED)
@@ -1274,6 +1224,108 @@ async def async_api_set_mode(
     )
 
     return response
+
+
+#Helper functiton
+def set_mode_fan_preset_mode(mode: str, entity: ha.Entity) -> tuple[str, dict[str, Any]]:
+    """Handle the fan preset mode."""
+    preset_mode = mode.split(".")[1]
+    data: dict[str, Any] = {ATTR_ENTITY_ID: entity.entity_id}
+
+    preset_modes: list[str] | None = entity.attributes.get(fan.ATTR_PRESET_MODES)
+    if preset_mode != PRESET_MODE_NA and preset_modes and preset_mode in preset_modes:
+        service = fan.SERVICE_SET_PRESET_MODE
+        data[fan.ATTR_PRESET_MODE] = preset_mode
+    else:
+        msg = f"Entity '{entity.entity_id}' does not support Preset '{preset_mode}'"
+        raise AlexaInvalidValueError(msg)
+    
+    return service, data
+
+
+#Helper functiton
+def set_mode_humidifier_mode(mode: str, entity: ha.Entity) -> tuple[str, dict[str, Any]]:
+    """Handle the humidifier mode."""
+    mode = mode.split(".")[1]
+    data: dict[str, Any] = {ATTR_ENTITY_ID: entity.entity_id}
+    
+    modes: list[str] | None = entity.attributes.get(humidifier.ATTR_AVAILABLE_MODES)
+    if mode != PRESET_MODE_NA and modes and mode in modes:
+        service = humidifier.SERVICE_SET_MODE
+        data[humidifier.ATTR_MODE] = mode
+    else:
+        msg = f"Entity '{entity.entity_id}' does not support Mode '{mode}'"
+        raise AlexaInvalidValueError(msg)
+    
+    return service, data
+
+
+#Helper functiton
+def set_mode_remote_activity(mode: str, entity: ha.Entity) -> tuple[str, dict[str, Any]]:
+    """Handle the remote activity mode."""
+    activity = mode.split(".")[1]
+    data: dict[str, Any] = {ATTR_ENTITY_ID: entity.entity_id}
+    
+    activities: list[str] | None = entity.attributes.get(remote.ATTR_ACTIVITY_LIST)
+    if activity != PRESET_MODE_NA and activities and activity in activities:
+        service = remote.SERVICE_TURN_ON
+        data[remote.ATTR_ACTIVITY] = activity
+    else:
+        msg = f"Entity '{entity.entity_id}' does not support Mode '{activity}'"
+        raise AlexaInvalidValueError(msg)
+    
+    return service, data
+
+
+#Helper functiton
+def set_mode_water_heater_operation_mode(mode: str, entity: ha.Entity) -> tuple[str, dict[str, Any]]:
+    """Handle the water heater operation mode."""
+    operation_mode = mode.split(".")[1]
+    data: dict[str, Any] = {ATTR_ENTITY_ID: entity.entity_id}
+    
+    operation_modes: list[str] | None = entity.attributes.get(water_heater.ATTR_OPERATION_LIST)
+    if operation_mode != PRESET_MODE_NA and operation_modes and operation_mode in operation_modes:
+        service = water_heater.SERVICE_SET_OPERATION_MODE
+        data[water_heater.ATTR_OPERATION_MODE] = operation_mode
+    else:
+        msg = f"Entity '{entity.entity_id}' does not support Operation mode '{operation_mode}'"
+        raise AlexaInvalidValueError(msg)
+    
+    return service, data
+
+
+#Helper functiton
+def set_mode_cover_position(mode: str, entity: ha.Entity) -> tuple[str, dict[str, Any]]:
+    """Handle the cover position mode."""
+    position = mode.split(".")[1]
+    data: dict[str, Any] = {ATTR_ENTITY_ID: entity.entity_id}
+
+    if position == cover.STATE_CLOSED:
+        service = cover.SERVICE_CLOSE_COVER
+    elif position == cover.STATE_OPEN:
+        service = cover.SERVICE_OPEN_COVER
+    elif position == "custom":
+        service = cover.SERVICE_STOP_COVER
+    else:
+        service = None
+
+    return service, data
+
+
+#Helper functiton
+def set_mode_valve_position(mode: str, entity: ha.Entity) -> tuple[str, dict[str, Any]]:
+    """Handle the valve position mode."""
+    position = mode.split(".")[1]
+    data: dict[str, Any] = {ATTR_ENTITY_ID: entity.entity_id}
+
+    if position == valve.STATE_CLOSED:
+        service = valve.SERVICE_CLOSE_VALVE
+    elif position == valve.STATE_OPEN:
+        service = valve.SERVICE_OPEN_VALVE
+    else:
+        service = None
+
+    return service, data
 
 
 @HANDLERS.register(("Alexa.ModeController", "AdjustMode"))
@@ -1426,6 +1478,7 @@ async def async_api_set_range(
     return response
 
 
+#Helper functiton
 def set_range_cover_position(entity, range_value, supported):
     """Handle cover position logic."""
     range_value = int(range_value)
@@ -1438,6 +1491,7 @@ def set_range_cover_position(entity, range_value, supported):
     return service, {ATTR_ENTITY_ID: entity.entity_id, cover.ATTR_POSITION: range_value}
 
 
+#Helper functiton
 def set_range_cover_tilt(entity, range_value, supported):
     """Handle cover tilt logic."""
     range_value = int(range_value)
@@ -1450,6 +1504,7 @@ def set_range_cover_tilt(entity, range_value, supported):
     return service, {ATTR_ENTITY_ID: entity.entity_id, cover.ATTR_TILT_POSITION: range_value}
 
 
+#Helper functiton
 def set_range_fan_percentage(entity, range_value, supported):
     """Handle fan speed logic."""
     range_value = int(range_value)
@@ -1462,6 +1517,7 @@ def set_range_fan_percentage(entity, range_value, supported):
     return service, {ATTR_ENTITY_ID: entity.entity_id, fan.ATTR_PERCENTAGE: range_value}
 
 
+#Helper functiton
 def set_range_humidifier_humidity(entity, range_value, supported):
     """Handle humidifier target humidity logic."""
     range_value = int(range_value)
@@ -1469,6 +1525,7 @@ def set_range_humidifier_humidity(entity, range_value, supported):
     return service, {ATTR_ENTITY_ID: entity.entity_id, humidifier.ATTR_HUMIDITY: range_value}
 
 
+#Helper functiton
 def set_range_input_number_value(entity, range_value, supported):
     """Handle input number value logic."""
     range_value = float(range_value)
@@ -1478,6 +1535,7 @@ def set_range_input_number_value(entity, range_value, supported):
     return service, {ATTR_ENTITY_ID: entity.entity_id, input_number.ATTR_VALUE: min(max_value, max(min_value, range_value))}
 
 
+#Helper functiton
 def set_range_number_value(entity, range_value, supported):
     """Handle number value logic."""
     range_value = float(range_value)
@@ -1487,6 +1545,7 @@ def set_range_number_value(entity, range_value, supported):
     return service, {ATTR_ENTITY_ID: entity.entity_id, number.ATTR_VALUE: min(max_value, max(min_value, range_value))}
 
 
+#Helper functiton
 def set_range_vacuum_fan_speed(entity, range_value, supported):
     """Handle vacuum fan speed logic."""
     speed_list = entity.attributes[vacuum.ATTR_FAN_SPEED_LIST]
@@ -1497,6 +1556,7 @@ def set_range_vacuum_fan_speed(entity, range_value, supported):
     return service, {ATTR_ENTITY_ID: entity.entity_id, vacuum.ATTR_FAN_SPEED: speed}
 
 
+#Helper functiton
 def set_range_valve_position(entity, range_value, supported):
     """Handle valve position logic."""
     range_value = int(range_value)
@@ -1589,9 +1649,8 @@ async def async_api_adjust_range(
     return response
 
 
-    def adjust_range_cover_position(entity, range_delta: int
-    , range_delta_default: bool
-    ) -> tuple[str, dict, int]:
+#Helper functiton
+def adjust_range_cover_position(entity, range_delta: int, range_delta_default: bool) -> tuple[str, dict, int]:
     """Handle the cover position logic and return the service, data, and position."""
     range_delta_updated = int(range_delta * 20) if range_delta_default else int(range_delta)
     current_position = entity.attributes.get(cover.ATTR_CURRENT_POSITION)
@@ -1616,6 +1675,7 @@ async def async_api_adjust_range(
     return service, data, position
 
 
+#Helper functiton
 def adjust_range_cover_tilt_position(
     entity, range_delta: int, range_delta_default: bool
 ) -> tuple[str, dict, int]:
@@ -1648,6 +1708,7 @@ def adjust_range_cover_tilt_position(
     return service, data, tilt_position
 
 
+#Helper functiton
 def adjust_range_fan_speed_percentage(
     entity, range_delta: int, range_delta_default: bool
 ) -> tuple[str, dict, int]:
@@ -1684,6 +1745,7 @@ def adjust_range_fan_speed_percentage(
     return service, data, percentage
 
 
+#Helper functiton
 def adjust_range_humidifier_target_humidity(
     entity, range_delta: int, range_delta_default: bool
 ) -> tuple[str, dict, int]:
@@ -1720,6 +1782,7 @@ def adjust_range_humidifier_target_humidity(
     return humidifier.SERVICE_SET_HUMIDITY, data, new_humidity
 
 
+#Helper functiton
 def adjust_range_vacuum_fan_speed(
     entity, range_delta: int
 ) -> tuple[str, dict, str | None]:
@@ -1751,6 +1814,7 @@ def adjust_range_vacuum_fan_speed(
     return vacuum.SERVICE_SET_FAN_SPEED, data, new_speed
 
 
+#Helper functiton
 def adjust_range_valve_position(
     entity, range_delta: int, range_delta_default: bool
 ) -> tuple[str, dict, int]:
