@@ -15,7 +15,7 @@ from .entity import MealieEntity
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
+    _: HomeAssistant,
     entry: MealieConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:

@@ -115,8 +115,9 @@ def async_get_entry(hass: HomeAssistant, config_entry_id: str) -> MealieConfigEn
     return cast(MealieConfigEntry, entry)
 
 
-def setup_services(hass: HomeAssistant) -> None:
-    """Set up the services for the Mealie integration."""
+# Services
+def get_async_get_mealplan(hass: HomeAssistant):
+    """Get instance of async_get_meal_plan."""
 
     async def async_get_mealplan(call: ServiceCall) -> ServiceResponse:
         """Get the mealplan for a specific range."""
@@ -138,6 +139,12 @@ def setup_services(hass: HomeAssistant) -> None:
             ) from err
         return {"mealplan": [asdict(x) for x in mealplans.items]}
 
+    return async_get_mealplan
+
+
+def get_async_get_recipe(hass: HomeAssistant):
+    """Get instance of async_get_recipe."""
+
     async def async_get_recipe(call: ServiceCall) -> ServiceResponse:
         """Get a recipe."""
         entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
@@ -157,6 +164,12 @@ def setup_services(hass: HomeAssistant) -> None:
                 translation_placeholders={"recipe_id": recipe_id},
             ) from err
         return {"recipe": asdict(recipe)}
+
+    return async_get_recipe
+
+
+def get_async_import_recipe(hass: HomeAssistant):
+    """Get instance of async_import_recipe."""
 
     async def async_import_recipe(call: ServiceCall) -> ServiceResponse:
         """Import a recipe."""
@@ -180,6 +193,12 @@ def setup_services(hass: HomeAssistant) -> None:
             return {"recipe": asdict(recipe)}
         return None
 
+    return async_import_recipe
+
+
+def get_async_set_random_mealplan(hass: HomeAssistant):
+    """Get instance of async_set_random_mealplan."""
+
     async def async_set_random_mealplan(call: ServiceCall) -> ServiceResponse:
         """Set a random mealplan."""
         entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
@@ -196,6 +215,12 @@ def setup_services(hass: HomeAssistant) -> None:
         if call.return_response:
             return {"mealplan": asdict(mealplan)}
         return None
+
+    return async_set_random_mealplan
+
+
+def get_async_set_mealplan(hass: HomeAssistant):
+    """Get instance of async_set_mealplan."""
 
     async def async_set_mealplan(call: ServiceCall) -> ServiceResponse:
         """Set a mealplan."""
@@ -220,38 +245,44 @@ def setup_services(hass: HomeAssistant) -> None:
             return {"mealplan": asdict(mealplan)}
         return None
 
+    return async_set_mealplan
+
+
+def setup_services(hass: HomeAssistant) -> None:
+    """Set up the services for the Mealie integration."""
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_GET_MEALPLAN,
-        async_get_mealplan,
+        get_async_get_mealplan(hass),
         schema=SERVICE_GET_MEALPLAN_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
         DOMAIN,
         SERVICE_GET_RECIPE,
-        async_get_recipe,
+        get_async_get_recipe(hass),
         schema=SERVICE_GET_RECIPE_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
         DOMAIN,
         SERVICE_IMPORT_RECIPE,
-        async_import_recipe,
+        get_async_import_recipe(hass),
         schema=SERVICE_IMPORT_RECIPE_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_RANDOM_MEALPLAN,
-        async_set_random_mealplan,
+        get_async_set_random_mealplan(hass),
         schema=SERVICE_SET_RANDOM_MEALPLAN_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_MEALPLAN,
-        async_set_mealplan,
+        get_async_set_mealplan(hass),
         schema=SERVICE_SET_MEALPLAN_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
     )
