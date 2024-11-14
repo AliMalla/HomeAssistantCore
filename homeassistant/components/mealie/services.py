@@ -54,6 +54,13 @@ SERVICE_GET_RECIPE_SCHEMA = vol.Schema(
     }
 )
 
+SERVICE_GET_RECIPES = "get_recipes"
+SERVICE_GET_RECIPES_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+    }
+)
+
 SERVICE_IMPORT_RECIPE = "import_recipe"
 SERVICE_IMPORT_RECIPE_SCHEMA = vol.Schema(
     {
@@ -168,6 +175,28 @@ def get_async_get_recipe(hass: HomeAssistant):
     return async_get_recipe
 
 
+def get_async_get_recipes(hass: HomeAssistant):
+    """Get instance of async_get_recipes."""
+
+    async def async_get_recipes(call: ServiceCall) -> ServiceResponse:
+        """Get recipes."""
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        client = entry.runtime_data.client
+        try:
+            recipes_res = await client.get_recipes()
+        except MealieConnectionError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="connection_error",
+            ) from err
+        # recipes_res.items is by default list[BaseRecipe]
+        # Dataclasses are not json serializable
+        # Action return values must be json serializable
+        return {"recipes": [asdict(x) for x in recipes_res.items]}
+
+    return async_get_recipes
+
+
 def get_async_import_recipe(hass: HomeAssistant):
     """Get instance of async_import_recipe."""
 
@@ -263,6 +292,13 @@ def setup_services(hass: HomeAssistant) -> None:
         SERVICE_GET_RECIPE,
         get_async_get_recipe(hass),
         schema=SERVICE_GET_RECIPE_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_RECIPES,
+        get_async_get_recipes(hass),
+        schema=SERVICE_GET_RECIPES_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
