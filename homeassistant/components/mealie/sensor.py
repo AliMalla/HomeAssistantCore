@@ -16,6 +16,8 @@ from homeassistant.helpers.typing import StateType
 
 from .coordinator import MealieConfigEntry, MealieStatisticsCoordinator
 from .entity import MealieEntity
+from homeassistant.helpers.entity import Entity
+import sqlite3
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -58,6 +60,31 @@ SENSOR_TYPES: tuple[MealieStatisticsSensorEntityDescription, ...] = (
     ),
 )
 
+class HeartedRecipesSensor(Entity):
+    def __init__(self, hass):
+        self.hass = hass
+        self._state = None
+
+    @property
+    def name(self):
+        return "Hearted Recipes"
+
+    @property
+    def state(self):
+        return len(self.get_hearted_recipes())
+
+    def get_hearted_recipes(self):
+        conn = sqlite3.connect("favourite_recipes.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT recipe_id FROM favourite_recipes")
+        recipes = cursor.fetchall()
+        conn.close()
+        return [recipe[0] for recipe in recipes]
+
+    @property
+    def extra_state_attributes(self):
+        return {"recipes": self.get_hearted_recipes()}
+
 
 async def async_setup_entry(
     _: HomeAssistant,
@@ -70,6 +97,7 @@ async def async_setup_entry(
     async_add_entities(
         MealieStatisticSensors(coordinator, description) for description in SENSOR_TYPES
     )
+    async_add_entities([HeartedRecipesSensor()])
 
 
 class MealieStatisticSensors(MealieEntity, SensorEntity):

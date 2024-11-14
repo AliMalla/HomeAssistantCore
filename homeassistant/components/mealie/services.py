@@ -3,6 +3,7 @@
 from dataclasses import asdict
 from datetime import date
 from typing import cast
+import sqlite3
 
 from aiomealie import (
     MealieConnectionError,
@@ -275,6 +276,31 @@ def get_async_set_mealplan(hass: HomeAssistant):
         return None
 
     return async_set_mealplan
+
+
+def heart_recipe(hass: HomeAssistant):
+    """Add a recipe to favourites."""
+
+    async def async_heart_recipe(call: ServiceCall) -> ServiceResponse:
+        """Heart a recipe."""
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        recipe_id = call.data[ATTR_RECIPE_ID]
+        conn = sqlite3.connect("favourite_recipes.db")
+        cursor = conn.cursor()
+        cursor.execute(
+        """
+        INSERT OR IGNORE INTO hearted_recipes (recipe_id)
+        VALUES (?)
+        """,
+        (recipe_id)
+        )
+        conn.commit()
+        conn.close()
+        
+
+        return {"recipe": asdict(recipe)}
+
+    return async_heart_recipe
 
 
 def setup_services(hass: HomeAssistant) -> None:

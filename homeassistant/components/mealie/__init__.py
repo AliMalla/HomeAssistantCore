@@ -27,6 +27,8 @@ from .coordinator import (
 from .services import setup_services
 from .utils import create_version
 
+import sqlite3
+
 PLATFORMS: list[Platform] = [Platform.CALENDAR, Platform.SENSOR, Platform.TODO]
 
 CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
@@ -35,6 +37,7 @@ CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
 async def async_setup(hass: HomeAssistant, _: ConfigType) -> bool:
     """Set up the Mealie component."""
     setup_services(hass)
+    initialize_favouriteDB()
     return True
 
 
@@ -100,3 +103,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: MealieConfigEntry) -> bo
 async def async_unload_entry(hass: HomeAssistant, entry: MealieConfigEntry) -> bool:
     """Unload a config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+def initialize_favouriteDB():
+    conn = sqlite3.connect("favourite_recipes.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS favourite_recipes (
+            id INTEGER PRIMARY KEY,
+            recipe_id TEXT UNIQUE
+        )
+        """
+    )
+    conn.commit()
+    return conn
