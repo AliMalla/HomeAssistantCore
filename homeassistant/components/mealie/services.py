@@ -278,7 +278,7 @@ def get_async_set_mealplan(hass: HomeAssistant):
     return async_set_mealplan
 
 
-def heart_recipe(hass: HomeAssistant):
+def get_async_heart_recipe(hass: HomeAssistant):
     """Add a recipe to favourites."""
 
     async def async_heart_recipe(call: ServiceCall) -> ServiceResponse:
@@ -289,18 +289,68 @@ def heart_recipe(hass: HomeAssistant):
         cursor = conn.cursor()
         cursor.execute(
         """
-        INSERT OR IGNORE INTO hearted_recipes (recipe_id)
+        INSERT OR IGNORE INTO favourite_recipes (recipe_id)
         VALUES (?)
         """,
         (recipe_id)
         )
         conn.commit()
         conn.close()
-        
 
+        client = entry.runtime_data.client
+        try:
+            recipe = await client.get_recipe(recipe_id)
+        except MealieConnectionError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="connection_error",
+            ) from err
+        except MealieNotFoundError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="recipe_not_found",
+                translation_placeholders={"recipe_id": recipe_id},
+            ) from err
         return {"recipe": asdict(recipe)}
 
     return async_heart_recipe
+
+
+def get_async_unheart_recipe(hass: HomeAssistant):
+    """Remove a recipe to favourites."""
+
+    async def async_unheart_recipe(call: ServiceCall) -> ServiceResponse:
+        """Unheart a recipe."""
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        recipe_id = call.data[ATTR_RECIPE_ID]
+        conn = sqlite3.connect("favourite_recipes.db")
+        cursor = conn.cursor()
+        cursor.execute(
+        """
+        DELETE FROM favourite_recipes WHERE recipe_id = ?
+        """,
+        (recipe_id)
+        )
+        conn.commit()
+        conn.close()
+
+        client = entry.runtime_data.client
+        try:
+            recipe = await client.get_recipe(recipe_id)
+        except MealieConnectionError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="connection_error",
+            ) from err
+        except MealieNotFoundError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="recipe_not_found",
+                translation_placeholders={"recipe_id": recipe_id},
+            ) from err
+        return {"recipe": asdict(recipe)}
+
+    return async_unheart_recipe
 
 
 def setup_services(hass: HomeAssistant) -> None:
@@ -347,4 +397,20 @@ def setup_services(hass: HomeAssistant) -> None:
         get_async_set_mealplan(hass),
         schema=SERVICE_SET_MEALPLAN_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        #this should be used in lovelace?
+        "heart_recipe",
+        get_async_heart_recipe(hass),
+        schema=SERVICE_GET_RECIPE_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        #this should be used in lovelace?
+        "unheart_recipe",
+        get_async_unheart_recipe(hass),
+        schema=SERVICE_GET_RECIPE_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
     )
