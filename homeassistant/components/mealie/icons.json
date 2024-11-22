@@ -30,7 +30,13 @@
     "get_recipe": {
       "service": "mdi:map"
     },
+    "get_specific_recipe": {
+      "service": "mdi:map"
+    },
     "get_recipes": {
+      "service": "mdi:map-plus"
+    },
+    "get_specific_recipes": {
       "service": "mdi:map-plus"
     },
     "import_recipe": {
