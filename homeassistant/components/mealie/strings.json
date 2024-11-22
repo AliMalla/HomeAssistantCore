@@ -150,6 +150,37 @@
         }
       }
     },
+
+    "get_specific_recipe": {
+      "name": "Get specific recipe",
+      "description": "Get specific recipe from Mealie",
+      "fields": {
+        "config_entry_id": {
+          "name": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::name%]",
+          "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
+        },
+        "recipe_name": {
+          "name": "Recipe NAME",
+          "description": "The recipe NAME."
+        }
+      }
+    },
+
+    "get_specific_recipes": {
+      "name": "Get specific recipes",
+      "description": "Get specific recipes from Mealie",
+      "fields": {
+        "config_entry_id": {
+          "name": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::name%]",
+          "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
+        },
+        "recipe_name": {
+          "name": "Recipe NAME",
+          "description": "The recipe NAME."
+        }
+      }
+    },
+
     "import_recipe": {
       "name": "Import recipe",
       "description": "Import recipe from an URL",
