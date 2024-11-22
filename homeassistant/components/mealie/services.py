@@ -31,6 +31,7 @@ from .const import (
     ATTR_NOTE_TEXT,
     ATTR_NOTE_TITLE,
     ATTR_RECIPE_ID,
+    ATTR_RECIPE_SLUG,
     ATTR_START_DATE,
     ATTR_URL,
     DOMAIN,
@@ -58,6 +59,14 @@ SERVICE_GET_RECIPES = "get_recipes"
 SERVICE_GET_RECIPES_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+    }
+)
+
+SERVICE_GET_RECIPE_CALORIES = "get_recipe_calories"
+SERVICE_GET_RECIPE_CALORIES_SCHEMA = (
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+        vol.Required(ATTR_RECIPE_SLUG): str,  # Slug-of-the-recipe
     }
 )
 
@@ -197,6 +206,37 @@ def get_async_get_recipes(hass: HomeAssistant):
     return async_get_recipes
 
 
+def get_async_get_recipe_calories(hass: HomeAssistant):
+
+    async def async_get_recipe_calories(call: ServiceCall) -> ServiceResponse:
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        slug = call.data[ATTR_RECIPE_SLUG]
+        client = entry.runtime_data.client
+
+        try:
+            #Fetch the recipe by slug
+            recipe = await client.get_recipe(slug)
+
+            #Extract the calories, None if not found
+            calories = recipe.get("nutrition", {}).get("calories", None)
+
+        except MealieConnectionError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="connection_error",
+            ) from err
+        except MealieNotFoundError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="recipe_not_found",
+                translation_placeholders={"recipe_slug": slug},
+            ) from err
+
+        return {"calories": calories}
+
+    return async_get_recipe_calories
+
+
 def get_async_import_recipe(hass: HomeAssistant):
     """Get instance of async_import_recipe."""
 
@@ -299,6 +339,13 @@ def setup_services(hass: HomeAssistant) -> None:
         SERVICE_GET_RECIPES,
         get_async_get_recipes(hass),
         schema=SERVICE_GET_RECIPES_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_RECIPE_CALORIES,
+        get_async_get_recipes(hass),
+        schema=SERVICE_GET_RECIPE_CALORIES_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
