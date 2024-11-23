@@ -24,7 +24,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 import homeassistant.util.dt as dt_util
 
-from .const import ATTR_MAX_COOKING_TIME, LOGGER
+from .const import LOGGER
 
 WEEK = timedelta(days=7)
 
@@ -80,7 +80,8 @@ class MealieDataUpdateCoordinator[_DataT](DataUpdateCoordinator[_DataT]):
         filtered_recipes = [
             recipe
             for recipe in all_recipes
-            if getattr(recipe, "cooking_time", None) <= ATTR_MAX_COOKING_TIME
+            if isinstance(getattr(recipe, "cooking_time", None), (int, float))
+            and getattr(recipe, "cooking_time") <= max_cooking_time
         ]
         return [recipe.to_dict() for recipe in filtered_recipes]
 

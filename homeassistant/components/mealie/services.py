@@ -256,7 +256,7 @@ def get_async_set_random_mealplan(hass: HomeAssistant):
         except Exception as err:
             raise HomeAssistantError(f"Error filtering recipes: {err}") from err
 
-        return {"filtered_recipes": filtered_recipes}
+        return [recipe.__dict__ for recipe in filtered_recipes]
 
     async def async_set_random_mealplan(call: ServiceCall) -> ServiceResponse:
         """Set a random mealplan."""
