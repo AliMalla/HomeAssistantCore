@@ -18,4 +18,7 @@ ATTR_ENTRY_TYPE = "entry_type"
 ATTR_NOTE_TITLE = "note_title"
 ATTR_NOTE_TEXT = "note_text"
 
+# New constant for cooking time filter
+ATTR_MAX_COOKING_TIME = "max_cooking_time"
+
 MIN_REQUIRED_MEALIE_VERSION = AwesomeVersion("v1.0.0")

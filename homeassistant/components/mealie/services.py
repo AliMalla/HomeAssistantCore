@@ -16,6 +16,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import ATTR_DATE
 from homeassistant.core import (
     HomeAssistant,
+    JsonObjectType,
     ServiceCall,
     ServiceResponse,
     SupportsResponse,
@@ -28,6 +29,7 @@ from .const import (
     ATTR_END_DATE,
     ATTR_ENTRY_TYPE,
     ATTR_INCLUDE_TAGS,
+    ATTR_MAX_COOKING_TIME,
     ATTR_NOTE_TEXT,
     ATTR_NOTE_TITLE,
     ATTR_RECIPE_ID,
@@ -35,7 +37,7 @@ from .const import (
     ATTR_URL,
     DOMAIN,
 )
-from .coordinator import MealieConfigEntry
+from .coordinator import MealieConfigEntry, MealieDataUpdateCoordinator
 
 SERVICE_GET_MEALPLAN = "get_mealplan"
 SERVICE_GET_MEALPLAN_SCHEMA = vol.Schema(
@@ -51,6 +53,14 @@ SERVICE_GET_RECIPE_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY_ID): str,
         vol.Required(ATTR_RECIPE_ID): str,
+    }
+)
+# Define the new service and schema
+SERVICE_FILTER_RECIPES = "filter_recipes"
+SERVICE_FILTER_RECIPES_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+        vol.Required(ATTR_MAX_COOKING_TIME): int,
     }
 )
 
@@ -228,6 +238,26 @@ def get_async_import_recipe(hass: HomeAssistant):
 def get_async_set_random_mealplan(hass: HomeAssistant):
     """Get instance of async_set_random_mealplan."""
 
+    async def async_filter_recipes(
+        hass: HomeAssistant, call: ServiceCall
+    ) -> JsonObjectType:
+        """Filter recipes by cooking time."""
+        config_entry_id = call.data[ATTR_CONFIG_ENTRY_ID]
+        max_cooking_time = call.data[ATTR_MAX_COOKING_TIME]
+
+        # Retrieve the coordinator for the specified config entry
+        coordinator: MealieDataUpdateCoordinator = hass.data[DOMAIN][config_entry_id]
+
+        try:
+            # Use the coordinator's method to filter recipes
+            filtered_recipes = await coordinator.filter_recipes_by_cooking_time(
+                max_cooking_time
+            )
+        except Exception as err:
+            raise HomeAssistantError(f"Error filtering recipes: {err}") from err
+
+        return {"filtered_recipes": filtered_recipes}
+
     async def async_set_random_mealplan(call: ServiceCall) -> ServiceResponse:
         """Set a random mealplan."""
         entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
@@ -321,4 +351,10 @@ def setup_services(hass: HomeAssistant) -> None:
         get_async_set_mealplan(hass),
         schema=SERVICE_SET_MEALPLAN_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_FILTER_RECIPES,
+        get_async_set_random_mealplan(hass),  # noqa: F821
+        schema=SERVICE_FILTER_RECIPES_SCHEMA,
     )

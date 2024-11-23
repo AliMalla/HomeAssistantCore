@@ -12,6 +12,7 @@ from aiomealie import (
     MealieConnectionError,
     Mealplan,
     MealplanEntryType,
+    RecipesResponse,
     ShoppingItem,
     ShoppingList,
     Statistics,
@@ -23,7 +24,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 import homeassistant.util.dt as dt_util
 
-from .const import LOGGER
+from .const import ATTR_MAX_COOKING_TIME, LOGGER
 
 WEEK = timedelta(days=7)
 
@@ -57,6 +58,31 @@ class MealieDataUpdateCoordinator[_DataT](DataUpdateCoordinator[_DataT]):
             update_interval=self._update_interval,
         )
         self.client = client
+
+    async def get_all_recipes(self) -> RecipesResponse:
+        """Fetch all recipes from Mealie."""
+        try:
+            return (
+                await self.client.get_recipes()
+            )  # Uses aiomealie's get_recipes method
+        except MealieConnectionError as error:
+            LOGGER.error("Failed to fetch recipes: %s", error)
+            raise UpdateFailed(error) from error
+
+    async def filter_recipes_by_cooking_time(self, max_cooking_time: int) -> list[dict]:
+        """Fetch and filter recipes by cooking time."""
+        # Fetch all recipes
+        recipes_response = await self.get_all_recipes()
+        # Access the 'items' attribute, which contains the list of recipes
+        all_recipes = recipes_response.items
+
+        # Filter recipes based on cooking time
+        filtered_recipes = [
+            recipe
+            for recipe in all_recipes
+            if getattr(recipe, "cooking_time", None) <= ATTR_MAX_COOKING_TIME
+        ]
+        return [recipe.to_dict() for recipe in filtered_recipes]
 
     async def _async_update_data(self) -> _DataT:
         """Fetch data from Mealie."""
