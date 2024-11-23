@@ -58,6 +58,7 @@ class MealieDataUpdateCoordinator[_DataT](DataUpdateCoordinator[_DataT]):
             update_interval=self._update_interval,
         )
         self.client = client
+        self.popularity = {}  # Initialize popularity table (recipe_id -> cooked count)
 
     async def get_all_recipes(self) -> RecipesResponse:
         """Fetch all recipes from Mealie."""
@@ -84,6 +85,20 @@ class MealieDataUpdateCoordinator[_DataT](DataUpdateCoordinator[_DataT]):
             and getattr(recipe, "cooking_time") <= max_cooking_time
         ]
         return [recipe.to_dict() for recipe in filtered_recipes]
+
+    async def filter_recipes_by_popularity(self, min_cooked: int) -> list[dict]:
+        """Fetch and filter recipes by popularity."""
+        # Fetch all recipes
+        recipes_response = await self.get_all_recipes()
+        all_recipes = recipes_response.items
+
+        # Filter recipes
+        popular_recipes = [
+            recipe
+            for recipe in all_recipes
+            if self.popularity.get(recipe.id, 0) >= min_cooked
+        ]
+        return [recipe.to_dict() for recipe in popular_recipes]
 
     async def _async_update_data(self) -> _DataT:
         """Fetch data from Mealie."""

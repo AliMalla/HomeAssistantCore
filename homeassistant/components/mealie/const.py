@@ -20,5 +20,8 @@ ATTR_NOTE_TEXT = "note_text"
 
 # New constant for cooking time filter
 ATTR_MAX_COOKING_TIME = "max_cooking_time"
+ATTR_MIN_COOKED = "min_cooked"
+
+POPULARITY_TABLE = "popularity"
 
 MIN_REQUIRED_MEALIE_VERSION = AwesomeVersion("v1.0.0")
