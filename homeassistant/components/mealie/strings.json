@@ -215,6 +215,34 @@
           "description": "Meal note text for when planning without recipe."
         }
       }
+    },
+    "heart_recipe": {
+      "name": "Heart recipe",
+      "description": "Heart recipe from Mealie",
+      "fields": {
+        "config_entry_id": {
+          "name": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::name%]",
+          "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
+        },
+        "recipe_id": {
+          "name": "Recipe ID or slug",
+          "description": "The recipe ID or the slug of the recipe to get."
+        }
+      }
+    },
+    "unheart_recipe": {
+      "name": "Unheart recipe",
+      "description": "Unheart recipe from Mealie",
+      "fields": {
+        "config_entry_id": {
+          "name": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::name%]",
+          "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
+        },
+        "recipe_id": {
+          "name": "Recipe ID or slug",
+          "description": "The recipe ID or the slug of the recipe to get."
+        }
+      }
     }
   },
   "selector": {

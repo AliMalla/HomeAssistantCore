@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 from aiomealie import MealieAuthenticationError, MealieClient, MealieError
 
 from homeassistant.const import CONF_API_TOKEN, CONF_HOST, CONF_VERIFY_SSL, Platform
@@ -26,8 +28,6 @@ from .coordinator import (
 )
 from .services import setup_services
 from .utils import create_version
-
-import sqlite3
 
 PLATFORMS: list[Platform] = [Platform.CALENDAR, Platform.SENSOR, Platform.TODO]
 
@@ -104,13 +104,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: MealieConfigEntry) -> b
     """Unload a config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
+
 def initialize_favouriteDB():
+    """Initialize favourite database."""
     conn = sqlite3.connect("favourite_recipes.db")
     cursor = conn.cursor()
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS favourite_recipes (
-            id INTEGER PRIMARY KEY,
             recipe_id TEXT UNIQUE
         )
         """

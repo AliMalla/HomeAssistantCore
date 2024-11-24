@@ -2,8 +2,8 @@
 
 from dataclasses import asdict
 from datetime import date
-from typing import cast
 import sqlite3
+from typing import cast
 
 from aiomealie import (
     MealieConnectionError,
@@ -288,11 +288,11 @@ def get_async_heart_recipe(hass: HomeAssistant):
         conn = sqlite3.connect("favourite_recipes.db")
         cursor = conn.cursor()
         cursor.execute(
-        """
+            """
         INSERT OR IGNORE INTO favourite_recipes (recipe_id)
         VALUES (?)
         """,
-        (recipe_id)
+            (recipe_id,),
         )
         conn.commit()
         conn.close()
@@ -326,10 +326,10 @@ def get_async_unheart_recipe(hass: HomeAssistant):
         conn = sqlite3.connect("favourite_recipes.db")
         cursor = conn.cursor()
         cursor.execute(
-        """
+            """
         DELETE FROM favourite_recipes WHERE recipe_id = ?
         """,
-        (recipe_id)
+            (recipe_id,),
         )
         conn.commit()
         conn.close()
@@ -400,7 +400,6 @@ def setup_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN,
-        #this should be used in lovelace?
         "heart_recipe",
         get_async_heart_recipe(hass),
         schema=SERVICE_GET_RECIPE_SCHEMA,
@@ -408,7 +407,6 @@ def setup_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN,
-        #this should be used in lovelace?
         "unheart_recipe",
         get_async_unheart_recipe(hass),
         schema=SERVICE_GET_RECIPE_SCHEMA,

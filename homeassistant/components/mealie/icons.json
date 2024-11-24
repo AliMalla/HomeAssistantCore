@@ -41,6 +41,12 @@
     },
     "set_mealplan": {
       "service": "mdi:food"
+    },
+    "heart_recipe": {
+      "service": "mdi:food"
+    },
+    "unheart_recipe": {
+      "service": "mdi:food"
     }
   }
 }
