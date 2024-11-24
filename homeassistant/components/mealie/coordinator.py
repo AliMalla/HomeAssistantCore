@@ -70,36 +70,6 @@ class MealieDataUpdateCoordinator[_DataT](DataUpdateCoordinator[_DataT]):
             LOGGER.error("Failed to fetch recipes: %s", error)
             raise UpdateFailed(error) from error
 
-    async def filter_recipes_by_cooking_time(self, max_cooking_time: int) -> list[dict]:
-        """Fetch and filter recipes by cooking time."""
-        # Fetch all recipes
-        recipes_response = await self.get_all_recipes()
-        # Access the 'items' attribute, which contains the list of recipes
-        all_recipes = recipes_response.items
-
-        # Filter recipes based on cooking time
-        filtered_recipes = [
-            recipe
-            for recipe in all_recipes
-            if isinstance(getattr(recipe, "cooking_time", None), (int, float))
-            and getattr(recipe, "cooking_time") <= max_cooking_time
-        ]
-        return [recipe.to_dict() for recipe in filtered_recipes]
-
-    async def filter_recipes_by_popularity(self, min_cooked: int) -> list[dict]:
-        """Fetch and filter recipes by popularity."""
-        # Fetch all recipes
-        recipes_response = await self.get_all_recipes()
-        all_recipes = recipes_response.items
-
-        # Filter recipes
-        popular_recipes = [
-            recipe
-            for recipe in all_recipes
-            if self.popularity.get(recipe.id, 0) >= min_cooked
-        ]
-        return [recipe.to_dict() for recipe in popular_recipes]
-
     async def _async_update_data(self) -> _DataT:
         """Fetch data from Mealie."""
         try:

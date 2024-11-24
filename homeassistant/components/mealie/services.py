@@ -38,7 +38,7 @@ from .const import (
     ATTR_URL,
     DOMAIN,
 )
-from .coordinator import MealieConfigEntry, MealieDataUpdateCoordinator
+from .coordinator import MealieConfigEntry
 
 SERVICE_GET_MEALPLAN = "get_mealplan"
 SERVICE_GET_MEALPLAN_SCHEMA = vol.Schema(
@@ -275,23 +275,30 @@ def get_async_filter_recipes(hass: HomeAssistant):
         config_entry_id = call.data[ATTR_CONFIG_ENTRY_ID]
         max_cooking_time = call.data[ATTR_MAX_COOKING_TIME]
 
-        # Retrieve the coordinator for the specified config entry
-        coordinator: MealieDataUpdateCoordinator = hass.data[DOMAIN][config_entry_id]
+        # Access the client directly
+        entry = async_get_entry(hass, config_entry_id)
+        client = entry.runtime_data.client
 
         try:
-            # Use the coordinator's method to filter recipes
-            filtered_recipes = await coordinator.filter_recipes_by_cooking_time(
-                max_cooking_time
-            )
+            # Fetch all recipes from the Mealie API
+            all_recipes = await client.get_recipes()
+
+            # Filter recipes by cooking time
+            filtered_recipes = [
+                recipe
+                for recipe in all_recipes
+                if getattr(recipe, "cooking_time", None)
+                and recipe.cooking_time <= max_cooking_time
+            ]
         except Exception as err:
             raise HomeAssistantError(f"Error filtering recipes: {err}") from err
 
-        return [recipe.__dict__ for recipe in filtered_recipes]
+        return [recipe.to_dict() for recipe in filtered_recipes]
 
     return async_filter_recipes
 
 
-def get_async_filter_recipes_by_popularity(hass: HomeAssistant):
+def get_aync_filter_recipes_by_popularity(hass: HomeAssistant):
     """Get instance of async_filter_recipes_by_popularity."""
 
     async def async_filter_recipes_by_popularity(call: ServiceCall) -> JsonObjectType:
@@ -299,18 +306,28 @@ def get_async_filter_recipes_by_popularity(hass: HomeAssistant):
         config_entry_id = call.data[ATTR_CONFIG_ENTRY_ID]
         min_cooked = call.data[ATTR_MIN_COOKED]
 
-        # Retrieve the coordinator for the specified config entry
-        coordinator: MealieDataUpdateCoordinator = hass.data[DOMAIN][config_entry_id]
-
         try:
-            # Use the coordinator's method to filter recipes by popularity
-            popular_recipes = await coordinator.filter_recipes_by_popularity(min_cooked)
+            # Retrieve the client from the entry
+            entry = async_get_entry(hass, config_entry_id)
+            client = entry.runtime_data.client
+
+            # Fetch all recipes from Mealie API
+            all_recipes = await client.get_recipes()
+
+            # Filter recipes based on minimum times cooked
+            popular_recipes = [
+                recipe
+                for recipe in all_recipes
+                if getattr(recipe, "cooked", 0) >= min_cooked
+            ]
+
+            # Return the filtered recipes as dictionaries
+            return [recipe.to_dict() for recipe in popular_recipes]
+
         except Exception as err:
             raise HomeAssistantError(
                 f"Error filtering recipes by popularity: {err}"
             ) from err
-
-        return [recipe.__dict__ for recipe in popular_recipes]
 
     return async_filter_recipes_by_popularity
 
@@ -393,23 +410,13 @@ def setup_services(hass: HomeAssistant) -> None:
         DOMAIN,
         SERVICE_FILTER_RECIPES,
         get_async_filter_recipes(hass),
-        schema=vol.Schema(
-            {
-                vol.Required(ATTR_CONFIG_ENTRY_ID): str,
-                vol.Required(ATTR_MAX_COOKING_TIME): int,
-            }
-        ),
+        schema=SERVICE_FILTER_RECIPES_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
         DOMAIN,
         SERVICE_FILTER_RECIPES_BY_POPULARITY,
-        get_async_filter_recipes_by_popularity(hass),
-        schema=vol.Schema(
-            {
-                vol.Required(ATTR_CONFIG_ENTRY_ID): str,
-                vol.Required(ATTR_MIN_COOKED): int,
-            }
-        ),
+        get_aync_filter_recipes_by_popularity(hass),
+        schema=SERVICE_FILTER_RECIPES_BY_POPULARITY_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
