@@ -16,6 +16,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import ATTR_DATE
 from homeassistant.core import (
     HomeAssistant,
+    JsonObjectType,
     ServiceCall,
     ServiceResponse,
     SupportsResponse,
@@ -28,6 +29,8 @@ from .const import (
     ATTR_END_DATE,
     ATTR_ENTRY_TYPE,
     ATTR_INCLUDE_TAGS,
+    ATTR_MAX_COOKING_TIME,
+    ATTR_MIN_COOKED,
     ATTR_NOTE_TEXT,
     ATTR_NOTE_TITLE,
     ATTR_RECIPE_ID,
@@ -53,7 +56,30 @@ SERVICE_GET_RECIPE_SCHEMA = vol.Schema(
         vol.Required(ATTR_RECIPE_ID): str,
     }
 )
-
+# Define the new service and schema
+SERVICE_FILTER_RECIPES = "filter_recipes"
+SERVICE_FILTER_RECIPES_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+        vol.Required(ATTR_MAX_COOKING_TIME): int,
+    }
+)
+# Define the new service and schema for filtering recipes by popularity
+SERVICE_FILTER_RECIPES_BY_POPULARITY = "filter_recipes_by_popularity"
+SERVICE_FILTER_RECIPES_BY_POPULARITY_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+        vol.Required(ATTR_MIN_COOKED): int,
+    }
+)
+# Define the service and schema for marking recipes as cooked
+SERVICE_MARK_RECIPE_AS_COOKED = "mark_recipe_as_cooked"
+SERVICE_MARK_RECIPE_AS_COOKED_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+        vol.Required(ATTR_RECIPE_ID): str,
+    }
+)
 SERVICE_GET_RECIPES = "get_recipes"
 SERVICE_GET_RECIPES_SCHEMA = vol.Schema(
     {
@@ -248,6 +274,96 @@ def get_async_set_random_mealplan(hass: HomeAssistant):
     return async_set_random_mealplan
 
 
+def get_async_filter_recipes(hass: HomeAssistant):
+    """Get instance of async_filter_recipes."""
+
+    async def async_filter_recipes(call: ServiceCall) -> JsonObjectType:
+        """Filter recipes by cooking time."""
+        config_entry_id = call.data[ATTR_CONFIG_ENTRY_ID]
+        max_cooking_time = call.data[ATTR_MAX_COOKING_TIME]
+
+        # Access the client directly
+        entry = async_get_entry(hass, config_entry_id)
+        client = entry.runtime_data.client
+
+        try:
+            # Fetch all recipes from the Mealie API
+            all_recipes = await client.get_recipes()
+
+            # Filter recipes by cooking time
+            filtered_recipes = [
+                recipe
+                for recipe in all_recipes
+                if getattr(recipe, "cooking_time", None)
+                and recipe.cooking_time <= max_cooking_time
+            ]
+        except Exception as err:
+            raise HomeAssistantError(f"Error filtering recipes: {err}") from err
+
+        return [recipe.to_dict() for recipe in filtered_recipes]
+
+    return async_filter_recipes
+
+
+def get_async_mark_recipe_as_cooked(hass: HomeAssistant):
+    """Get instance of async_mark_recipe_as_cooked."""
+
+    async def async_mark_recipe_as_cooked(call: ServiceCall) -> None:
+        """Mark a recipe as cooked."""
+        config_entry_id = call.data[ATTR_CONFIG_ENTRY_ID]
+        recipe_id = call.data[ATTR_RECIPE_ID]
+
+        # Retrieve the coordinator for the specified config entry
+        coordinator = hass.data[DOMAIN][config_entry_id]
+
+        try:
+            # Increment the cooked count for the recipe
+            if recipe_id not in coordinator.popularity:
+                coordinator.popularity[recipe_id] = 0  # Initialize if not present
+            coordinator.popularity[recipe_id] += 1
+        except Exception as err:
+            raise HomeAssistantError(f"Error marking recipe as cooked: {err}") from err
+
+    return async_mark_recipe_as_cooked
+
+
+def get_aync_filter_recipes_by_popularity(hass: HomeAssistant):
+    """Get instance of async_filter_recipes_by_popularity."""
+
+    async def async_filter_recipes_by_popularity(call: ServiceCall) -> JsonObjectType:
+        """Filter recipes by popularity."""
+        config_entry_id = call.data[ATTR_CONFIG_ENTRY_ID]
+        min_cooked = call.data[ATTR_MIN_COOKED]
+
+        try:
+            # Retrieve the client and entry
+            entry = async_get_entry(hass, config_entry_id)
+            client = entry.runtime_data.client
+
+            # Fetch all recipes
+            all_recipes = await client.get_recipes()
+
+            # Filter and include the cooked count
+            popular_recipes = [
+                {
+                    "id": recipe.id,
+                    "name": recipe.name,
+                    "cooked": getattr(recipe, "cooked", 0),
+                }
+                for recipe in all_recipes
+                if getattr(recipe, "cooked", 0) >= min_cooked
+            ]
+
+            return {"popular_recipes": popular_recipes}  # noqa: TRY300
+
+        except Exception as err:
+            raise HomeAssistantError(
+                f"Error filtering recipes by popularity: {err}"
+            ) from err
+
+    return async_filter_recipes_by_popularity
+
+
 def get_async_set_mealplan(hass: HomeAssistant):
     """Get instance of async_set_mealplan."""
 
@@ -321,4 +437,25 @@ def setup_services(hass: HomeAssistant) -> None:
         get_async_set_mealplan(hass),
         schema=SERVICE_SET_MEALPLAN_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_FILTER_RECIPES,
+        get_async_filter_recipes(hass),
+        schema=SERVICE_FILTER_RECIPES_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_FILTER_RECIPES_BY_POPULARITY,
+        get_aync_filter_recipes_by_popularity(hass),
+        schema=SERVICE_FILTER_RECIPES_BY_POPULARITY_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_MARK_RECIPE_AS_COOKED,
+        get_async_mark_recipe_as_cooked(hass),
+        schema=SERVICE_MARK_RECIPE_AS_COOKED_SCHEMA,
+        supports_response=False,
     )
