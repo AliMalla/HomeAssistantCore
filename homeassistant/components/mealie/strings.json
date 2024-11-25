@@ -190,8 +190,8 @@
           "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
         },
         "excluded_ingredients": {
-          "name": "excluded ingredients",
-          "description": "The excluded ingredients."
+          "name": "Excluded ingredients",
+          "description": "A list of ingredients to exclude from the recipes"
         }
       }
     },
