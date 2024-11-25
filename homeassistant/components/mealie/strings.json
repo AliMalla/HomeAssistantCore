@@ -181,6 +181,21 @@
       }
     },
 
+    "get_filtered_recipes_by_ingredients": {
+      "name": "Get filtered recipes by ingredients",
+      "description": "Get filtered recipes by ingredients from Mealie",
+      "fields": {
+        "config_entry_id": {
+          "name": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::name%]",
+          "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
+        },
+        "excluded_ingredients": {
+          "name": "excluded ingredients",
+          "description": "The excluded ingredients."
+        }
+      }
+    },
+
     "import_recipe": {
       "name": "Import recipe",
       "description": "Import recipe from an URL",
