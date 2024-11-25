@@ -32,6 +32,18 @@ get_recipes:
         config_entry:
           integration: mealie
 
+get_recipe_calories:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: mealie
+    recipe_slug:
+      required: true
+      selector:
+        text:
+
 import_recipe:
   fields:
     config_entry_id:
