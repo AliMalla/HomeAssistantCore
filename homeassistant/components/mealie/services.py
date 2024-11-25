@@ -1,5 +1,6 @@
 """Define services for the Mealie integration."""
 
+import asyncio
 from dataclasses import asdict
 from datetime import date
 from typing import cast
@@ -27,6 +28,7 @@ from .const import (
     ATTR_CONFIG_ENTRY_ID,
     ATTR_END_DATE,
     ATTR_ENTRY_TYPE,
+    ATTR_EXCULDED_INGREDIENTS,
     ATTR_INCLUDE_TAGS,
     ATTR_NOTE_TEXT,
     ATTR_NOTE_TITLE,
@@ -75,6 +77,14 @@ SERVICE_GET_SPECIFIC_RECIPES_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY_ID): str,
         vol.Required(ATTR_RECIPE_NAME): str,
+    }
+)
+
+SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS = "get_filtered_recipes_by_ingredients"
+SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+        vol.Required(ATTR_EXCULDED_INGREDIENTS): [str],
     }
 )
 
@@ -269,6 +279,65 @@ def get_async_get_specific_recipes(hass: HomeAssistant):
     return async_get_specific_recipes
 
 
+def get_async_get_filtered_recipes_by_ingredients(hass: HomeAssistant):
+    """Get instance of async_get_filtered_recipes_by_ingredients."""
+
+    async def async_get_filtered_recipes_by_ingredients(
+        call: ServiceCall,
+    ) -> ServiceResponse:
+        """Get filtered recipes by ingredients."""
+
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+
+        exclude_ingredients = call.data[ATTR_EXCULDED_INGREDIENTS]
+        client = entry.runtime_data.client
+        try:
+            recipes_res = await client.get_recipes()
+        except MealieConnectionError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="connection_error",
+            ) from err
+
+        # Define an async function to fetch and process each recipe
+        async def fetch_and_filter_recipe(recipe):
+            try:
+                # Fetch detailed recipe info by ID
+                detailed_recipe = await client.get_recipe(recipe.recipe_id)
+            except MealieConnectionError:
+                return None  # Skip this recipe if fetching fails
+
+            # Extract ingredient notes from the detailed recipe
+            ingredients_notes = [
+                ingredient.get("note", "").lower()
+                if isinstance(ingredient, dict)
+                else ingredient.note.lower()
+                for ingredient in detailed_recipe.ingredients
+            ]
+
+            # Check if any unwanted ingredient notes are in the list
+            if any(
+                excluded.lower() in note
+                for excluded in exclude_ingredients
+                for note in ingredients_notes
+            ):
+                return None  # Exclude recipe
+
+            # Return the recipe if it passes the filter
+            return asdict(recipe) if not isinstance(recipe, dict) else recipe
+
+        # Launch tasks for all recipes concurrently
+        tasks = [fetch_and_filter_recipe(recipe) for recipe in recipes_res.items]
+        filtered_recipes = await asyncio.gather(*tasks)
+
+        # Remove None values (excluded recipes)
+        filtered_recipes = [recipe for recipe in filtered_recipes if recipe is not None]
+
+        return {"recipes": filtered_recipes}
+
+    return async_get_filtered_recipes_by_ingredients
+
+
 def get_async_import_recipe(hass: HomeAssistant):
     """Get instance of async_import_recipe."""
 
@@ -385,6 +454,13 @@ def setup_services(hass: HomeAssistant) -> None:
         SERVICE_GET_SPECIFIC_RECIPES,
         get_async_get_specific_recipes(hass),
         schema=SERVICE_GET_SPECIFIC_RECIPES_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS,
+        get_async_get_filtered_recipes_by_ingredients(hass),
+        schema=SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
 
