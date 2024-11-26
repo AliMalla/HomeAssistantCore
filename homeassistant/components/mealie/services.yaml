@@ -44,6 +44,18 @@ get_recipe_calories:
       selector:
         text:
 
+get_calories_based_filtered_recipes:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: mealie
+    max_calories:
+      required: true
+      selector:
+        number:
+
 import_recipe:
   fields:
     config_entry_id:
