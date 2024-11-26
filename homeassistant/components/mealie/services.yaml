@@ -104,6 +104,30 @@ set_random_mealplan:
             - side
           translation_key: mealplan_entry_type
 
+heart_recipe:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: mealie
+    recipe_id:
+      required: true
+      selector:
+        text:
+
+unheart_recipe:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: mealie
+    recipe_id:
+      required: true
+      selector:
+        text:
+
 set_mealplan:
   fields:
     config_entry_id:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 from aiomealie import MealieAuthenticationError, MealieClient, MealieError
 
 from homeassistant.const import CONF_API_TOKEN, CONF_HOST, CONF_VERIFY_SSL, Platform
@@ -35,6 +37,7 @@ CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
 async def async_setup(hass: HomeAssistant, _: ConfigType) -> bool:
     """Set up the Mealie component."""
     setup_services(hass)
+    initialize_favouriteDB()
     return True
 
 
@@ -100,3 +103,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: MealieConfigEntry) -> bo
 async def async_unload_entry(hass: HomeAssistant, entry: MealieConfigEntry) -> bool:
     """Unload a config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+def initialize_favouriteDB():
+    """Initialize favourite database."""
+    conn = sqlite3.connect("favourite_recipes.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS favourite_recipes (
+            recipe_id TEXT UNIQUE
+        )
+        """
+    )
+    conn.commit()
+    return conn

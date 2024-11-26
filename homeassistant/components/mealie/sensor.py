@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
+import sqlite3
 
 from aiomealie import Statistics
 
@@ -11,6 +12,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
@@ -59,6 +61,39 @@ SENSOR_TYPES: tuple[MealieStatisticsSensorEntityDescription, ...] = (
 )
 
 
+class HeartedRecipesSensor(Entity):  # pylint: disable=hass-enforce-class-module
+    """Entity for hearted recipes."""
+
+    def __init__(self, hass):
+        """Set attributes."""
+        self.hass = hass
+        self._state = None
+
+    @property
+    def name(self):
+        """Name of the entity."""
+        return "Hearted Recipes"
+
+    @property
+    def state(self):
+        """State of the entity."""
+        return len(self.get_hearted_recipes())
+
+    def get_hearted_recipes(self):
+        """Return all the hearted recipes."""
+        conn = sqlite3.connect("favourite_recipes.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT recipe_id FROM favourite_recipes")
+        recipes = cursor.fetchall()
+        conn.close()
+        return [recipe[0] for recipe in recipes]
+
+    @property
+    def extra_state_attributes(self):
+        """Return the hearted recipes with extra attributes."""
+        return {"recipes": self.get_hearted_recipes()}
+
+
 async def async_setup_entry(
     _: HomeAssistant,
     entry: MealieConfigEntry,
@@ -70,6 +105,7 @@ async def async_setup_entry(
     async_add_entities(
         MealieStatisticSensors(coordinator, description) for description in SENSOR_TYPES
     )
+    async_add_entities([HeartedRecipesSensor(_)])
 
 
 class MealieStatisticSensors(MealieEntity, SensorEntity):
