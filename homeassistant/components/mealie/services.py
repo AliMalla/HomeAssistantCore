@@ -423,7 +423,6 @@ def setup_services(hass: HomeAssistant) -> None:
         schema=SERVICE_GET_FILTERED_RECIPES_BASED_ON_CALORIES_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
-
     hass.services.async_register(
         DOMAIN,
         SERVICE_GET_MEALPLAN,
