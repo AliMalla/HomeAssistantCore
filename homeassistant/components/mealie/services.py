@@ -348,29 +348,23 @@ def get_async_get_recipe_calories(hass: HomeAssistant):
                 url = f"{host}/api/recipes/{slug}"
 
                 async with session.get(url, headers=headers) as response:
-                    if response.status != 200:
-                        raise HomeAssistantError(f"Error fetching recipe: {response.status}")
                     recipe_data = await response.json()
 
             # Extract calories from the response
             calories = recipe_data.get("nutrition", {}).get("calories", 0)
+            res = {
+            "slug": slug,
+            "calories": calories
+            } if calories != 0 else {"slug": "NOT FOUND"}
 
         except MealieConnectionError as err:
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="connection_error",
             ) from err
-        except MealieNotFoundError as err:
-            raise ServiceValidationError(
-                translation_domain=DOMAIN,
-                translation_key="recipe_not_found",
-                translation_placeholders={"recipe_slug": slug},
-            ) from err
+        except MealieNotFoundError:
+            res = {"slug": "NOT FOUND"}
 
-        res = {
-            "slug": slug,
-            "calories": calories
-            }
         print(f"Response: {res}")
         return res
 
