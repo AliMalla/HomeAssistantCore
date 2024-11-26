@@ -230,10 +230,8 @@ def get_async_get_recipe_calories(hass: HomeAssistant):
         client = entry.runtime_data.client
 
         try:
-            # Retrieve the token from the client (adapt this to your client's structure)
             host = client.api_host
-            api_token = client.token  # Adjust based on actual implementation
-
+            api_token = client.token
 
             # Make a direct API call using the token
             async with aiohttp.ClientSession() as session:
@@ -303,18 +301,18 @@ def get_async_filter_recipes_by_calories(hass: HomeAssistant):
                 # Extract calories from the recipe response safely
                 calories_raw = recipe_data.get("nutrition", {}).get("calories", 0)
                 try:
-                    calories = int(calories_raw) if calories_raw is not None else 0
+                    calories = int(calories_raw) if calories_raw is not None else None
                 except (ValueError, TypeError):
                     # Fallback in case the calories value is invalid
-                    calories = 0
-
-                # Add the calories to the recipe data
-                recipe_dict = asdict(recipe)
-                recipe_dict['calories'] = calories
+                    calories = None
 
                 # If the recipe's calories are <= max_calories, add it to the filtered list
-                if calories <= max_calories:
+                if calories is not None and calories <= max_calories:
+                    # Add the calories to the recipe data
+                    recipe_dict = asdict(recipe)
+                    recipe_dict['calories'] = calories
                     filtered_recipes.append(recipe_dict)
+
         except MealieConnectionError as err:
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
