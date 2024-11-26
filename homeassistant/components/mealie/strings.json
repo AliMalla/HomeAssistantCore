@@ -181,6 +181,21 @@
       }
     },
 
+    "get_recipe_calories": {
+      "name": "Get calories of a recipe",
+      "description": "Get recipe from Mealie",
+      "fields": {
+        "config_entry_id": {
+          "name": "Mealie instance",
+          "description": "Select the Mealie instance to get mealplan from"
+        },
+        "recipe_slug": {
+          "name": "Recipe slug",
+          "description": "The slug of the recipe whose calories will be calculated"
+        }
+      }
+    },
+
     "get_calories_based_filtered_recipes": {
       "name": "Get filterd recipes based on calories",
       "description": "Get recipe from Mealie",
