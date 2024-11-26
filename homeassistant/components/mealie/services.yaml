@@ -56,6 +56,30 @@ get_specific_recipes:
       selector:
         text:
 
+get_recipe_calories:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: mealie
+    recipe_slug:
+      required: true
+      selector:
+        text:
+
+get_calories_based_filtered_recipes:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: mealie
+    max_calories:
+      required: true
+      selector:
+        number:
+
 get_filtered_recipes_by_ingredients:
   fields:
     config_entry_id:

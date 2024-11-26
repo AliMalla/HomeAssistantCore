@@ -181,6 +181,36 @@
       }
     },
 
+    "get_recipe_calories": {
+      "name": "Get calories of a recipe",
+      "description": "Get recipe from Mealie",
+      "fields": {
+        "config_entry_id": {
+          "name": "Mealie instance",
+          "description": "Select the Mealie instance to get mealplan from"
+        },
+        "recipe_slug": {
+          "name": "Recipe slug",
+          "description": "The slug of the recipe whose calories will be calculated"
+        }
+      }
+    },
+
+    "get_calories_based_filtered_recipes": {
+      "name": "Get filterd recipes based on calories",
+      "description": "Get recipe from Mealie",
+      "fields": {
+        "config_entry_id": {
+          "name": "Mealie instance",
+          "description": "Select the Mealie instance to get mealplan from"
+        },
+        "max_calories": {
+          "name": "Maximum calorie count",
+          "description": "The maximun calorie count that the recipes to be returned can have"
+        }
+      }
+    },
+
     "get_filtered_recipes_by_ingredients": {
       "name": "Get filtered recipes by ingredients",
       "description": "Get filtered recipes by ingredients from Mealie",

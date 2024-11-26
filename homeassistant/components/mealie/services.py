@@ -5,6 +5,10 @@ from dataclasses import asdict
 from datetime import date
 import sqlite3
 from typing import cast
+import aiohttp
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 from aiomealie import (
     MealieConnectionError,
@@ -38,6 +42,8 @@ from .const import (
     ATTR_NOTE_TITLE,
     ATTR_RECIPE_ID,
     ATTR_RECIPE_NAME,
+    ATTR_RECIPE_SLUG,
+    ATTR_MAX_CALORIES,
     ATTR_START_DATE,
     ATTR_URL,
     DOMAIN,
@@ -104,6 +110,22 @@ SERVICE_GET_SPECIFIC_RECIPES_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY_ID): str,
         vol.Required(ATTR_RECIPE_NAME): str,
+    }
+)
+
+SERVICE_GET_RECIPE_CALORIES = "get_recipe_calories"
+SERVICE_GET_RECIPE_CALORIES_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+        vol.Required(ATTR_RECIPE_SLUG): str,  # Slug-of-the-recipe
+    }
+)
+
+SERVICE_GET_FILTERED_RECIPES_BASED_ON_CALORIES = "get_calories_based_filtered_recipes"
+SERVICE_GET_FILTERED_RECIPES_BASED_ON_CALORIES_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+        vol.Required(ATTR_MAX_CALORIES): int, # Max calorie count for filtering
     }
 )
 
@@ -304,6 +326,114 @@ def get_async_get_specific_recipes(hass: HomeAssistant):
         }
 
     return async_get_specific_recipes
+
+
+def get_async_get_recipe_calories(hass: HomeAssistant):
+    """Get instance of async_get_recipe_calories."""
+
+    async def async_get_recipe_calories(call: ServiceCall) -> ServiceResponse:
+        """Get calories of a recipe based on its slug"""
+
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        slug = call.data[ATTR_RECIPE_SLUG]
+        client = entry.runtime_data.client
+
+        try:
+            host = client.api_host
+            api_token = client.token
+
+            # Make a direct API call using the token
+            async with aiohttp.ClientSession() as session:
+                headers = {"Authorization": f"Bearer {api_token}"}
+                url = f"{host}/api/recipes/{slug}"
+
+                async with session.get(url, headers=headers) as response:
+                    recipe_data = await response.json()
+
+            # Extract calories from the response
+            calories = recipe_data.get("nutrition", {}).get("calories", 0)
+            res = {
+            "slug": slug,
+            "calories": calories
+            } if calories != 0 else {"slug": "NOT FOUND"}
+
+        except MealieConnectionError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="connection_error",
+            ) from err
+        except MealieNotFoundError:
+            res = {"slug": "NOT FOUND"}
+
+        print(f"Response: {res}")
+        return res
+
+    return async_get_recipe_calories
+
+
+def get_async_filter_recipes_by_calories(hass: HomeAssistant):
+    """Get instance of async_filter_recipes_by_calories."""
+
+    async def async_filter_recipes_by_calories(call: ServiceCall) -> ServiceResponse:
+        """Get recipes filtered by calories."""
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        client = entry.runtime_data.client
+
+        # Get the max_calories limit from the service call data
+        max_calories = call.data.get('max_calories', float('inf'))
+
+        try:
+            recipes = await client.get_recipes()
+            filtered_recipes = []
+
+            # Loop  to fetch recipes calorie info
+            for recipe in recipes.items:
+                recipe_slug = recipe.slug
+                host = client.api_host
+                api_token = client.token
+
+                # Make GET requests to fetch the recipe details for getting the calories
+                url = f"{host}/api/recipes/{recipe_slug}"
+                headers = {"Authorization": f"Bearer {api_token}"}
+
+                # Fetch the recipe's data including calories
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, headers=headers) as response:
+                        if response.status != 200:
+                            raise HomeAssistantError(f"Error fetching recipe {recipe_slug}: {response.status}")
+                        recipe_data = await response.json()
+
+                # Extract calories from the recipe response safely
+                calories_raw = recipe_data.get("nutrition", {}).get("calories", 0)
+                try:
+                    calories = int(calories_raw) if calories_raw is not None else None
+                except (ValueError, TypeError):
+                    # Fallback in case the calories value is invalid
+                    calories = None
+
+                # If the recipe's calories are <= max_calories, add it to the filtered list
+                if calories is not None and calories <= max_calories:
+                    # Add the calories to the recipe data
+                    recipe_dict = asdict(recipe)
+                    recipe_dict['calories'] = calories
+                    filtered_recipes.append(recipe_dict)
+
+        except MealieConnectionError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="connection_error",
+            ) from err
+        except MealieNotFoundError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="recipe_not_found",
+                translation_placeholders={"recipe_slug": recipe_slug},
+            ) from err
+
+        print(f"Response: {filtered_recipes}")
+        return {"recipes": filtered_recipes}
+
+    return async_filter_recipes_by_calories
 
 
 def get_async_get_filtered_recipes_by_ingredients(hass: HomeAssistant):
@@ -676,6 +806,20 @@ def setup_services(hass: HomeAssistant) -> None:
         get_async_set_mealplan(hass),
         schema=SERVICE_SET_MEALPLAN_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_RECIPE_CALORIES,
+        get_async_get_recipe_calories(hass),
+        schema=SERVICE_GET_RECIPE_CALORIES_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_FILTERED_RECIPES_BASED_ON_CALORIES,
+        get_async_filter_recipes_by_calories(hass),
+        schema=SERVICE_GET_FILTERED_RECIPES_BASED_ON_CALORIES_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
         DOMAIN,
