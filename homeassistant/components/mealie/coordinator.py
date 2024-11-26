@@ -12,6 +12,7 @@ from aiomealie import (
     MealieConnectionError,
     Mealplan,
     MealplanEntryType,
+    RecipesResponse,
     ShoppingItem,
     ShoppingList,
     Statistics,
@@ -57,6 +58,17 @@ class MealieDataUpdateCoordinator[_DataT](DataUpdateCoordinator[_DataT]):
             update_interval=self._update_interval,
         )
         self.client = client
+        self.popularity = {}  # Initialize popularity table (recipe_id -> cooked count)
+
+    async def get_all_recipes(self) -> RecipesResponse:
+        """Fetch all recipes from Mealie."""
+        try:
+            return (
+                await self.client.get_recipes()
+            )  # Uses aiomealie's get_recipes method
+        except MealieConnectionError as error:
+            LOGGER.error("Failed to fetch recipes: %s", error)
+            raise UpdateFailed(error) from error
 
     async def _async_update_data(self) -> _DataT:
         """Fetch data from Mealie."""
