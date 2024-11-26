@@ -5,6 +5,10 @@ from dataclasses import asdict
 from datetime import date
 import sqlite3
 from typing import cast
+import aiohttp
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 from aiomealie import (
     MealieConnectionError,
@@ -38,6 +42,7 @@ from .const import (
     ATTR_NOTE_TITLE,
     ATTR_RECIPE_ID,
     ATTR_RECIPE_NAME,
+    ATTR_RECIPE_SLUG,
     ATTR_START_DATE,
     ATTR_URL,
     DOMAIN,
@@ -104,6 +109,14 @@ SERVICE_GET_SPECIFIC_RECIPES_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY_ID): str,
         vol.Required(ATTR_RECIPE_NAME): str,
+    }
+)
+
+SERVICE_GET_RECIPE_CALORIES = "get_recipe_calories"
+SERVICE_GET_RECIPE_CALORIES_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+        vol.Required(ATTR_RECIPE_SLUG): str,  # Slug-of-the-recipe
     }
 )
 
@@ -304,6 +317,55 @@ def get_async_get_specific_recipes(hass: HomeAssistant):
         }
 
     return async_get_specific_recipes
+
+
+def get_async_get_recipe_calories(hass: HomeAssistant):
+    """Get instance of async_get_recipe_calories."""
+
+    async def async_get_recipe_calories(call: ServiceCall) -> ServiceResponse:
+        """Get calories of a recipe based on its slug"""
+
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        slug = call.data[ATTR_RECIPE_SLUG]
+        client = entry.runtime_data.client
+
+        try:
+            host = client.api_host
+            api_token = client.token
+
+            # Make a direct API call using the token
+            async with aiohttp.ClientSession() as session:
+                headers = {"Authorization": f"Bearer {api_token}"}
+                url = f"{host}/api/recipes/{slug}"
+
+                async with session.get(url, headers=headers) as response:
+                    if response.status != 200:
+                        raise HomeAssistantError(f"Error fetching recipe: {response.status}")
+                    recipe_data = await response.json()
+
+            # Extract calories from the response
+            calories = recipe_data.get("nutrition", {}).get("calories", 0)
+
+        except MealieConnectionError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="connection_error",
+            ) from err
+        except MealieNotFoundError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="recipe_not_found",
+                translation_placeholders={"recipe_slug": slug},
+            ) from err
+
+        res = {
+            "slug": slug,
+            "calories": calories
+            }
+        print(f"Response: {res}")
+        return res
+
+    return async_get_recipe_calories
 
 
 def get_async_get_filtered_recipes_by_ingredients(hass: HomeAssistant):
@@ -676,6 +738,13 @@ def setup_services(hass: HomeAssistant) -> None:
         get_async_set_mealplan(hass),
         schema=SERVICE_SET_MEALPLAN_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_RECIPE_CALORIES,
+        get_async_get_recipe_calories(hass),
+        schema=SERVICE_GET_RECIPE_CALORIES_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
         DOMAIN,
