@@ -33,6 +33,9 @@
     "get_recipes": {
       "service": "mdi:map-plus"
     },
+    "get_calories_based_filtered_recipes": {
+      "service": "mdi:map-plus"
+    },
     "import_recipe": {
       "service": "mdi:map-search"
     },
