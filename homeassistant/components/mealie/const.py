@@ -19,6 +19,8 @@ ATTR_INCLUDE_TAGS = "include_tags"
 ATTR_ENTRY_TYPE = "entry_type"
 ATTR_NOTE_TITLE = "note_title"
 ATTR_NOTE_TEXT = "note_text"
+ATTR_RECIPE_SLUG = "recipe_slug"
+ATTR_MAX_CALORIES = "max_calories"
 
 # New constant for cooking time filter
 ATTR_MAX_COOKING_TIME = "max_cooking_time"
