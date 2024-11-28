@@ -871,7 +871,7 @@ def setup_services(hass: HomeAssistant) -> None:
         "get_favourites",
         get_async_get_favourites(hass),
         schema=SERVICE_GET_RECIPES_SCHEMA,
-        supports_response=SupportsResponse.ONLY,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
         DOMAIN,
