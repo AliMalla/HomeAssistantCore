@@ -610,6 +610,26 @@ def get_async_unheart_recipe(hass: HomeAssistant):
     return async_unheart_recipe
 
 
+def get_async_get_favourites(hass: HomeAssistant):
+    """Get instance of async_get_favourites."""
+
+    async def async_get_favourites(call: ServiceCall) -> ServiceResponse:
+        """Get favourites."""
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        client = entry.runtime_data.client
+
+        conn = sqlite3.connect("favourite_recipes.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT recipe_id FROM favourite_recipes")
+        rows = cursor.fetchall()
+        conn.close()
+        recipe_ids = [row[0] for row in rows]
+
+        return {"recipes": recipe_ids}
+
+    return async_get_favourites
+
+
 def setup_services(hass: HomeAssistant) -> None:
     """Set up the services for the Mealie integration."""
 
@@ -696,6 +716,13 @@ def setup_services(hass: HomeAssistant) -> None:
         "unheart_recipe",
         get_async_unheart_recipe(hass),
         schema=SERVICE_GET_RECIPE_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "get_favourites",
+        get_async_get_favourites(hass),
+        schema=SERVICE_GET_RECIPES_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
