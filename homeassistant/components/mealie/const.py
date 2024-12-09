@@ -22,6 +22,7 @@ ATTR_NOTE_TEXT = "note_text"
 ATTR_RECIPE_SLUG = "recipe_slug"
 ATTR_MAX_CALORIES = "max_calories"
 ATTR_ADD_INGREDIENT = "add_ingredient"
+ATTR_REMOVE_INGREDIENT = "remove_ingredient"
 
 # New constant for cooking time filter
 ATTR_MAX_COOKING_TIME = "max_cooking_time"
