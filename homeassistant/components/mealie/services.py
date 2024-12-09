@@ -45,6 +45,7 @@ from .const import (
     ATTR_RECIPE_SLUG,
     ATTR_MAX_CALORIES,
     ATTR_ADD_INGREDIENT,
+    ATTR_REMOVE_INGREDIENT,
     ATTR_START_DATE,
     ATTR_URL,
     DOMAIN,
@@ -135,6 +136,14 @@ SERVICE_ENTER_NEW_INGREDIENT_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY_ID): str,
         vol.Required(ATTR_ADD_INGREDIENT): str, # Ingredient to be added
+    }
+)
+
+SERVICE_REMOVE_INGREDIENT = "remove_ingredient"
+SERVICE_REMOVE_INGREDIENT_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+        vol.Required(ATTR_REMOVE_INGREDIENT): str, # Ingredient to be removed
     }
 )
 
@@ -510,6 +519,67 @@ def get_sync_enter_ingredient(hass: HomeAssistant):
             conn.close()
 
     return sync_enter_ingredient
+
+
+def get_sync_remove_ingredient(hass: HomeAssistant):
+    """Get instance of sync_remove_ingredient."""
+
+    def sync_remove_ingredient(call: ServiceCall) -> ServiceResponse:
+        """Remove an existing ingredient from the available ingredients database."""
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        client = entry.runtime_data.client
+
+        # Convert ingredient to lowercase
+        ingredient = call.data[ATTR_REMOVE_INGREDIENT].lower()
+
+        try:
+            # Connect to the SQLite database
+            conn = sqlite3.connect("available_ingredients.db")
+            cursor = conn.cursor()
+
+            # Attempt to delete the ingredient
+            cursor.execute(
+                """
+                DELETE FROM available_ingredients
+                WHERE ingredient = ?
+                """,
+                (ingredient,),
+            )
+            conn.commit()
+
+            # Check if the ingredient was removed
+            if cursor.rowcount > 0:
+                response = {
+                    "ingredient": ingredient,
+                    "removed": True,
+                    "response": "Ingredient successfully removed",
+                }
+            else:
+                response = {
+                    "ingredient": ingredient,
+                    "removed": False,
+                    "response": "Ingredient not found in the database",
+                }
+
+            _LOGGER.info("Response: %s", response)
+            return response
+
+        except sqlite3.Error as err:
+            _LOGGER.error("Database error while removing ingredient %s: %s", ingredient, err)
+            raise HomeAssistantError(
+                f"Database error occurred while removing ingredient '{ingredient}': {err}"
+            ) from err
+
+        except Exception as err:
+            _LOGGER.error("Unexpected error while removing ingredient %s: %s", ingredient, err)
+            raise HomeAssistantError(
+                f"Unexpected error occurred while removing ingredient '{ingredient}': {err}"
+            ) from err
+
+        finally:
+            conn.close()
+
+    return sync_remove_ingredient
 
 
 def get_async_get_filtered_recipes_by_ingredients(hass: HomeAssistant):
@@ -911,6 +981,13 @@ def setup_services(hass: HomeAssistant) -> None:
         SERVICE_ENTER_NEW_INGREDIENT,
         get_sync_enter_ingredient(hass),
         schema=SERVICE_ENTER_NEW_INGREDIENT_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REMOVE_INGREDIENT,
+        get_sync_remove_ingredient(hass),
+        schema=SERVICE_REMOVE_INGREDIENT_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
