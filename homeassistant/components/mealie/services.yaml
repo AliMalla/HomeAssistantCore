@@ -92,6 +92,18 @@ enter_new_ingredient:
       selector:
         text:
 
+remove_ingredient:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: mealie
+    remove_ingredient:
+      required: true
+      selector:
+        text:
+
 get_filtered_recipes_by_ingredients:
   fields:
     config_entry_id:
