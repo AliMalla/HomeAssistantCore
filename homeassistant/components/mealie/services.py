@@ -44,6 +44,7 @@ from .const import (
     ATTR_RECIPE_NAME,
     ATTR_RECIPE_SLUG,
     ATTR_MAX_CALORIES,
+    ATTR_ADD_INGREDIENT,
     ATTR_START_DATE,
     ATTR_URL,
     DOMAIN,
@@ -129,6 +130,14 @@ SERVICE_GET_FILTERED_RECIPES_BASED_ON_CALORIES_SCHEMA = vol.Schema(
     }
 )
 
+SERVICE_ENTER_NEW_INGREDIENT = "enter_new_ingredient"
+SERVICE_ENTER_NEW_INGREDIENT_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+        vol.Required(ATTR_ADD_INGREDIENT): str, # Ingredient to be added
+    }
+)
+
 SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS = "get_filtered_recipes_by_ingredients"
 SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS_SCHEMA = vol.Schema(
     {
@@ -136,7 +145,6 @@ SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS_SCHEMA = vol.Schema(
         vol.Required(ATTR_EXCULDED_INGREDIENTS): [str],
     }
 )
-
 
 SERVICE_IMPORT_RECIPE = "import_recipe"
 SERVICE_IMPORT_RECIPE_SCHEMA = vol.Schema(
@@ -436,6 +444,74 @@ def get_async_filter_recipes_by_calories(hass: HomeAssistant):
     return async_filter_recipes_by_calories
 
 
+def get_sync_enter_ingredient(hass: HomeAssistant):
+    """Get instance of sync_enter_ingredient."""
+
+    def sync_enter_ingredient(call: ServiceCall) -> ServiceResponse:
+        """Add a new ingredient to the available ingredients database."""
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        client = entry.runtime_data.client
+        ingredient = call.data[ATTR_ADD_INGREDIENT].lower()
+
+        try:
+            # Connect to the SQLite database
+            conn = sqlite3.connect("available_ingredients.db")
+            cursor = conn.cursor()
+
+            # Create table if it doesn't exist
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS available_ingredients (
+                    ingredient TEXT PRIMARY KEY
+                )
+                """
+            )
+
+            # Insert the ingredient if it doesn't already exist
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO available_ingredients (ingredient)
+                VALUES (?)
+                """,
+                (ingredient,),
+            )
+            conn.commit()
+
+            # Check if the ingredient was added
+            if cursor.rowcount > 0:
+                response = {
+                    "ingredient": ingredient,
+                    "added": True,
+                    "response": "Ingredient successfully added",
+                }
+            else:
+                response = {
+                    "ingredient": ingredient,
+                    "added": False,
+                    "response": "Ingredient already exists",
+                }
+
+            _LOGGER.info("Response: %s", response)
+            return response
+
+        except sqlite3.Error as err:
+            _LOGGER.error("Database error while adding ingredient %s: %s", ingredient, err)
+            raise HomeAssistantError(
+                f"Database error occurred while adding ingredient '{ingredient}': {err}"
+            ) from err
+
+        except Exception as err:
+            _LOGGER.error("Unexpected error while adding ingredient %s: %s", ingredient, err)
+            raise HomeAssistantError(
+                f"Unexpected error occurred while adding ingredient '{ingredient}': {err}"
+            ) from err
+
+        finally:
+            conn.close()
+
+    return sync_enter_ingredient
+
+
 def get_async_get_filtered_recipes_by_ingredients(hass: HomeAssistant):
     """Get instance of async_get_filtered_recipes_by_ingredients."""
 
@@ -562,17 +638,26 @@ def get_async_filter_recipes(hass: HomeAssistant):
             # Fetch all recipes from the Mealie API
             all_recipes = await client.get_recipes()
 
+            # Extract recipes from the `items` attribute
+            recipes_list = all_recipes.items
+
             # Filter recipes by cooking time
             filtered_recipes = [
-                recipe
-                for recipe in all_recipes
-                if getattr(recipe, "cooking_time", None)
+                {
+                    "id": recipe.recipe_id,
+                    "name": recipe.name,
+                    "cooking_time": recipe.cooking_time,
+                }
+                for recipe in recipes_list
+                if isinstance(getattr(recipe, "cooking_time", None), (int, float))
                 and recipe.cooking_time <= max_cooking_time
             ]
+
         except Exception as err:
             raise HomeAssistantError(f"Error filtering recipes: {err}") from err
 
-        return [recipe.to_dict() for recipe in filtered_recipes]
+        # Return the result as a dictionary
+        return {"filtered_recipes": filtered_recipes}
 
     return async_filter_recipes
 
@@ -819,6 +904,13 @@ def setup_services(hass: HomeAssistant) -> None:
         SERVICE_GET_FILTERED_RECIPES_BASED_ON_CALORIES,
         get_async_filter_recipes_by_calories(hass),
         schema=SERVICE_GET_FILTERED_RECIPES_BASED_ON_CALORIES_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ENTER_NEW_INGREDIENT,
+        get_sync_enter_ingredient(hass),
+        schema=SERVICE_ENTER_NEW_INGREDIENT_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
