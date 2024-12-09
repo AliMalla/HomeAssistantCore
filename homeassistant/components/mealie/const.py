@@ -11,7 +11,7 @@ LOGGER = logging.getLogger(__package__)
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 ATTR_START_DATE = "start_date"
 ATTR_END_DATE = "end_date"
-ATTR_EXCULDED_INGREDIENTS = "exculded_ingredients"
+ATTR_EXCULDED_INGREDIENTS = "excluded_ingredients"
 ATTR_RECIPE_ID = "recipe_id"
 ATTR_RECIPE_NAME = "recipe_name"
 ATTR_URL = "url"
@@ -21,6 +21,7 @@ ATTR_NOTE_TITLE = "note_title"
 ATTR_NOTE_TEXT = "note_text"
 ATTR_RECIPE_SLUG = "recipe_slug"
 ATTR_MAX_CALORIES = "max_calories"
+ATTR_ADD_INGREDIENT = "add_ingredient"
 
 # New constant for cooking time filter
 ATTR_MAX_COOKING_TIME = "max_cooking_time"
