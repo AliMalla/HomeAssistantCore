@@ -150,6 +150,16 @@
         }
       }
     },
+    "get_favourites": {
+      "name": "Get favourites",
+      "description": "Get favourites from Mealie",
+      "fields": {
+        "config_entry_id": {
+          "name": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::name%]",
+          "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
+        }
+      }
+    },
 
     "get_specific_recipe": {
       "name": "Get specific recipe",

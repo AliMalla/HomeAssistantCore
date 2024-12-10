@@ -68,6 +68,15 @@
     },
     "unheart_recipe": {
       "service": "mdi:food"
+    },
+    "heart_recipe": {
+      "service": "mdi:food"
+    },
+    "unheart_recipe": {
+      "service": "mdi:food"
+    },
+    "get_favourites": {
+      "service": "mdi:map-plus"
     }
   }
 }

@@ -3,10 +3,11 @@
 import asyncio
 from dataclasses import asdict
 from datetime import date
+import logging
 import sqlite3
 from typing import cast
+
 import aiohttp
-import logging
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ from .const import (
     ATTR_ENTRY_TYPE,
     ATTR_EXCULDED_INGREDIENTS,
     ATTR_INCLUDE_TAGS,
+    ATTR_MAX_CALORIES,
     ATTR_MAX_COOKING_TIME,
     ATTR_MIN_COOKED,
     ATTR_NOTE_TEXT,
@@ -127,7 +129,7 @@ SERVICE_GET_FILTERED_RECIPES_BASED_ON_CALORIES = "get_calories_based_filtered_re
 SERVICE_GET_FILTERED_RECIPES_BASED_ON_CALORIES_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY_ID): str,
-        vol.Required(ATTR_MAX_CALORIES): int, # Max calorie count for filtering
+        vol.Required(ATTR_MAX_CALORIES): int,  # Max calorie count for filtering
     }
 )
 
@@ -369,10 +371,11 @@ def get_async_get_recipe_calories(hass: HomeAssistant):
 
             # Extract calories from the response
             calories = recipe_data.get("nutrition", {}).get("calories", 0)
-            res = {
-            "slug": slug,
-            "calories": calories
-            } if calories != 0 else {"slug": "NOT FOUND"}
+            res = (
+                {"slug": slug, "calories": calories}
+                if calories != 0
+                else {"slug": "NOT FOUND"}
+            )
 
         except MealieConnectionError as err:
             raise HomeAssistantError(
@@ -397,7 +400,7 @@ def get_async_filter_recipes_by_calories(hass: HomeAssistant):
         client = entry.runtime_data.client
 
         # Get the max_calories limit from the service call data
-        max_calories = call.data.get('max_calories', float('inf'))
+        max_calories = call.data.get("max_calories", float("inf"))
 
         try:
             recipes = await client.get_recipes()
@@ -417,7 +420,9 @@ def get_async_filter_recipes_by_calories(hass: HomeAssistant):
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url, headers=headers) as response:
                         if response.status != 200:
-                            raise HomeAssistantError(f"Error fetching recipe {recipe_slug}: {response.status}")
+                            raise HomeAssistantError(
+                                f"Error fetching recipe {recipe_slug}: {response.status}"
+                            )
                         recipe_data = await response.json()
 
                 # Extract calories from the recipe response safely
@@ -432,7 +437,7 @@ def get_async_filter_recipes_by_calories(hass: HomeAssistant):
                 if calories is not None and calories <= max_calories:
                     # Add the calories to the recipe data
                     recipe_dict = asdict(recipe)
-                    recipe_dict['calories'] = calories
+                    recipe_dict["calories"] = calories
                     filtered_recipes.append(recipe_dict)
 
         except MealieConnectionError as err:
@@ -895,6 +900,26 @@ def get_async_unheart_recipe(hass: HomeAssistant):
     return async_unheart_recipe
 
 
+def get_async_get_favourites(hass: HomeAssistant):
+    """Get instance of async_get_favourites."""
+
+    async def async_get_favourites(call: ServiceCall) -> ServiceResponse:
+        """Get favourites."""
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        client = entry.runtime_data.client
+
+        conn = sqlite3.connect("favourite_recipes.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT recipe_id FROM favourite_recipes")
+        rows = cursor.fetchall()
+        conn.close()
+        recipe_ids = [row[0] for row in rows]
+
+        return {"recipes": recipe_ids}
+
+    return async_get_favourites
+
+
 def setup_services(hass: HomeAssistant) -> None:
     """Set up the services for the Mealie integration."""
 
@@ -917,7 +942,7 @@ def setup_services(hass: HomeAssistant) -> None:
         SERVICE_GET_RECIPES,
         get_async_get_recipes(hass),
         schema=SERVICE_GET_RECIPES_SCHEMA,
-        supports_response=SupportsResponse.ONLY,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
         DOMAIN,
@@ -931,14 +956,14 @@ def setup_services(hass: HomeAssistant) -> None:
         SERVICE_GET_SPECIFIC_RECIPES,
         get_async_get_specific_recipes(hass),
         schema=SERVICE_GET_SPECIFIC_RECIPES_SCHEMA,
-        supports_response=SupportsResponse.ONLY,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
         DOMAIN,
         SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS,
         get_async_get_filtered_recipes_by_ingredients(hass),
         schema=SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS_SCHEMA,
-        supports_response=SupportsResponse.ONLY,
+        supports_response=SupportsResponse.OPTIONAL,
     )
 
     hass.services.async_register(
@@ -974,7 +999,7 @@ def setup_services(hass: HomeAssistant) -> None:
         SERVICE_GET_FILTERED_RECIPES_BASED_ON_CALORIES,
         get_async_filter_recipes_by_calories(hass),
         schema=SERVICE_GET_FILTERED_RECIPES_BASED_ON_CALORIES_SCHEMA,
-        supports_response=SupportsResponse.ONLY,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
         DOMAIN,
@@ -1010,6 +1035,13 @@ def setup_services(hass: HomeAssistant) -> None:
         get_async_unheart_recipe(hass),
         schema=SERVICE_GET_RECIPE_SCHEMA,
         supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "get_favourites",
+        get_async_get_favourites(hass),
+        schema=SERVICE_GET_RECIPES_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
         DOMAIN,

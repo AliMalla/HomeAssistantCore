@@ -32,6 +32,14 @@ get_recipes:
         config_entry:
           integration: mealie
 
+get_favourites:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: mealie
+
 get_specific_recipe:
   fields:
     config_entry_id:
