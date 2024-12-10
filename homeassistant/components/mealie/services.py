@@ -147,6 +147,13 @@ SERVICE_REMOVE_INGREDIENT_SCHEMA = vol.Schema(
     }
 )
 
+SERVICE_GET_RECOMMENDED_RECIPES_BASED_ON_INGREDIENTS = "get_recommended_recipes_based_on_ingredients"
+SERVICE_GET_RECOMMENDED_RECIPES_BASED_ON_INGREDIENTS_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+    }
+)
+
 SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS = "get_filtered_recipes_by_ingredients"
 SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS_SCHEMA = vol.Schema(
     {
@@ -582,6 +589,76 @@ def get_sync_remove_ingredient(hass: HomeAssistant):
     return sync_remove_ingredient
 
 
+def get_async_get_recommended_recipes_based_on_ingredients(hass: HomeAssistant):
+
+    async def async_get_recommended_recipes_based_on_ingredients(call: ServiceCall) -> ServiceResponse:
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+
+        conn = sqlite3.connect("available_ingredients.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT ingredient FROM available_ingredients")
+
+        # Fetch all rows and convert to a list
+        available_ingredients = [row[0] for row in cursor.fetchall()]
+        conn.close()
+
+        client = entry.runtime_data.client
+        try:
+            recipes_res = await client.get_recipes()
+        except MealieConnectionError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="connection_error",
+            ) from err
+
+        # Define an async function to fetch and process each recipe
+        async def fetch_and_filter_recipe(recipe):
+            try:
+                # Fetch detailed recipe info by ID
+                detailed_recipe = await client.get_recipe(recipe.recipe_id)
+            except MealieConnectionError:
+                return None
+
+            # Extract ingredient notes from the detailed recipe
+            ingredients_notes = [
+                ingredient.get("note", "").lower()
+                if isinstance(ingredient, dict)
+                else ingredient.note.lower()
+                for ingredient in detailed_recipe.ingredients
+            ]
+
+            # Check if any unwanted ingredient notes are in the list
+            ingredient_is_available = True
+            for ingredient in ingredients_notes:
+                if not ingredient_is_available:
+                    break
+                for x in range(0,len(available_ingredients)):
+                    if(available_ingredients[x] in ingredient):
+                        ingredient_is_available = True
+                        break
+                    else:
+                        if x == len(available_ingredients) - 1 :
+                            ingredient_is_available = False
+                            break
+            if ingredient_is_available:
+                return asdict(recipe) if not isinstance(recipe, dict) else recipe
+
+            return None
+
+        # Launch tasks for all recipes concurrently
+        tasks = [fetch_and_filter_recipe(recipe) for recipe in recipes_res.items]
+        filtered_recipes = await asyncio.gather(*tasks)
+
+        # Remove None values (excluded recipes)
+        filtered_recipes = [recipe for recipe in filtered_recipes if recipe is not None]
+
+        print(f"Response: {filtered_recipes}")
+
+        return {"recipes": filtered_recipes}
+
+    return async_get_recommended_recipes_based_on_ingredients
+
+
 def get_async_get_filtered_recipes_by_ingredients(hass: HomeAssistant):
     """Get instance of async_get_filtered_recipes_by_ingredients."""
 
@@ -988,6 +1065,13 @@ def setup_services(hass: HomeAssistant) -> None:
         SERVICE_REMOVE_INGREDIENT,
         get_sync_remove_ingredient(hass),
         schema=SERVICE_REMOVE_INGREDIENT_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_RECOMMENDED_RECIPES_BASED_ON_INGREDIENTS,
+        get_async_get_recommended_recipes_based_on_ingredients(hass),
+        schema=SERVICE_GET_RECOMMENDED_RECIPES_BASED_ON_INGREDIENTS_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
