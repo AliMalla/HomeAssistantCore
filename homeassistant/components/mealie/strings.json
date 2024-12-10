@@ -140,6 +140,56 @@
         }
       }
     },
+    "get_attached_recipes": {
+      "name": "Get attached recipes",
+      "description": "Get attached recipes to a recipe from Mealie",
+      "fields": {
+        "config_entry_id": {
+          "name": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::name%]",
+          "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
+        },
+        "recipe_id": {
+          "name": "Recipe ID or slug",
+          "description": "The recipe ID or the slug of the recipe to get."
+        }
+      }
+    },
+    "attach_recipe": {
+      "name": "Attach recipe",
+      "description": "Attach recipe to another in Mealie",
+      "fields": {
+        "config_entry_id": {
+          "name": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::name%]",
+          "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
+        },
+        "recipe_id": {
+          "name": "Recipe ID or slug",
+          "description": "The recipe ID or the slug of the recipe to get."
+        },
+        "recipe_id_2": {
+          "name": "Recipe ID or slug",
+          "description": "The recipe ID or the slug of the recipe to get."
+        }
+      }
+    },
+    "remove_attached_recipe": {
+      "name": "Remove attached recipe",
+      "description": "Remove an attached recipe in Mealie",
+      "fields": {
+        "config_entry_id": {
+          "name": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::name%]",
+          "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
+        },
+        "recipe_id": {
+          "name": "Recipe ID or slug",
+          "description": "The recipe ID or the slug of the recipe to get."
+        },
+        "recipe_id_2": {
+          "name": "Recipe ID or slug",
+          "description": "The recipe ID or the slug of the recipe to get."
+        }
+      }
+    },
     "get_recipes": {
       "name": "Get recipes",
       "description": "Get recipes from Mealie",

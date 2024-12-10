@@ -38,6 +38,7 @@ async def async_setup(hass: HomeAssistant, _: ConfigType) -> bool:
     """Set up the Mealie component."""
     setup_services(hass)
     initialize_favouriteDB()
+    initialize_attachDB()
     return True
 
 
@@ -113,6 +114,23 @@ def initialize_favouriteDB():
         """
         CREATE TABLE IF NOT EXISTS favourite_recipes (
             recipe_id TEXT UNIQUE
+        )
+        """
+    )
+    conn.commit()
+    return conn
+
+
+def initialize_attachDB():
+    """Initialize attach database."""
+    conn = sqlite3.connect("attached_recipes.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS attached_recipes (
+            recipe_id TEXT NOT NULL,
+            attached_recipe_id TEXT NOT NULL,
+            PRIMARY KEY (recipe_id, attached_recipe_id)
         )
         """
     )
