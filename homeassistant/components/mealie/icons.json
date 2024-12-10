@@ -51,6 +51,9 @@
     "get_recommended_recipes_based_on_ingredients": {
       "service": "mdi:map-plus"
     },
+    "get_all_available_ingredients": {
+      "service": "mdi:map-plus"
+    },
     "get_calories_based_filtered_recipes": {
       "service": "mdi:map-plus"
     },
