@@ -590,8 +590,10 @@ def get_sync_remove_ingredient(hass: HomeAssistant):
 
 
 def get_async_get_recommended_recipes_based_on_ingredients(hass: HomeAssistant):
+    """Get instance of async_get_recommended_recipes_based_on_ingredients."""
 
     async def async_get_recommended_recipes_based_on_ingredients(call: ServiceCall) -> ServiceResponse:
+        """Get recommended recipes based on existing ingredients."""
         entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
 
         conn = sqlite3.connect("available_ingredients.db")
