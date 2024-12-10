@@ -156,6 +156,13 @@ SERVICE_GET_RECOMMENDED_RECIPES_BASED_ON_INGREDIENTS_SCHEMA = vol.Schema(
     }
 )
 
+SERVICE_GET_ALL_AVAILABLE_INGREDIENTS = "get_all_available_ingredients"
+SERVICE_GET_ALL_AVAILABLE_INGREDIENTS_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+    }
+)
+
 SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS = "get_filtered_recipes_by_ingredients"
 SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS_SCHEMA = vol.Schema(
     {
@@ -666,6 +673,41 @@ def get_async_get_recommended_recipes_based_on_ingredients(hass: HomeAssistant):
     return async_get_recommended_recipes_based_on_ingredients
 
 
+def get_sync_get_all_available_ingredients(hass: HomeAssistant):
+    """Get instance of sync_get_all_available_ingredients"""
+
+    def sync_get_all_available_ingredients(call: ServiceCall) -> ServiceResponse:
+        """Retrieve all available ingredients database."""
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        client = entry.runtime_data.client
+        try:
+            # Connect to the SQLite database
+            conn = sqlite3.connect("available_ingredients.db")
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT ingredient FROM available_ingredients")
+
+            # Fetch all rows and convert to a list
+            available_ingredients = [row[0] for row in cursor.fetchall()]
+            conn.close()
+
+        except sqlite3.Error as err:
+            _LOGGER.error("Database error while getting ingredients: %s", err)
+            raise HomeAssistantError(
+                "Database error while getting ingredients: %s", err
+            ) from err
+
+        response = []
+        for ingredient in available_ingredients:
+            ing = {"item": ingredient}
+            response.append(ing)
+
+        print(f"Response: {response}")
+        return {"items": response}
+
+    return sync_get_all_available_ingredients
+
+
 def get_async_get_filtered_recipes_by_ingredients(hass: HomeAssistant):
     """Get instance of async_get_filtered_recipes_by_ingredients."""
 
@@ -1099,6 +1141,13 @@ def setup_services(hass: HomeAssistant) -> None:
         SERVICE_GET_RECOMMENDED_RECIPES_BASED_ON_INGREDIENTS,
         get_async_get_recommended_recipes_based_on_ingredients(hass),
         schema=SERVICE_GET_RECOMMENDED_RECIPES_BASED_ON_INGREDIENTS_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_ALL_AVAILABLE_INGREDIENTS,
+        get_sync_get_all_available_ingredients(hass),
+        schema=SERVICE_GET_ALL_AVAILABLE_INGREDIENTS_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
