@@ -42,6 +42,12 @@
     "get_recipe_calories": {
       "service": "mdi:map-plus"
     },
+    "enter_new_ingredient": {
+      "service": "mdi:map-plus"
+    },
+    "remove_ingredient": {
+      "service": "mdi:map-plus"
+    },
     "get_calories_based_filtered_recipes": {
       "service": "mdi:map-plus"
     },
