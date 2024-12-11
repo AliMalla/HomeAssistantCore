@@ -556,6 +556,15 @@ def get_sync_remove_ingredient(hass: HomeAssistant):
             conn = sqlite3.connect("available_ingredients.db")
             cursor = conn.cursor()
 
+            # Create table if it doesn't exist
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS available_ingredients (
+                    ingredient TEXT PRIMARY KEY
+                )
+                """
+            )
+
             # Attempt to delete the ingredient
             cursor.execute(
                 """
@@ -610,11 +619,23 @@ def get_async_get_recommended_recipes_based_on_ingredients(hass: HomeAssistant):
 
         conn = sqlite3.connect("available_ingredients.db")
         cursor = conn.cursor()
+        # Create table if it doesn't exist
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS available_ingredients (
+                ingredient TEXT PRIMARY KEY
+            )
+            """
+        )
+
         cursor.execute("SELECT ingredient FROM available_ingredients")
 
         # Fetch all rows and convert to a list
         available_ingredients = [row[0] for row in cursor.fetchall()]
         conn.close()
+
+        if len(available_ingredients) == 0:
+            return {"recipes": []}
 
         client = entry.runtime_data.client
         try:
