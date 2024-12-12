@@ -271,6 +271,57 @@
       }
     },
 
+    "enter_new_ingredient": {
+      "name": "Enter new ingredient",
+      "description": "Add new ingredient that you have at home",
+      "fields": {
+        "config_entry_id": {
+          "name": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::name%]",
+          "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
+        },
+        "add_ingredient": {
+          "name": "Ingredient name",
+          "description": "The ingredient that you have at home and want to add"
+        }
+      }
+    },
+
+    "remove_ingredient": {
+      "name": "Remove ingredient",
+      "description": "Remove an ingredient because you dont have it at home anymore",
+      "fields": {
+        "config_entry_id": {
+          "name": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::name%]",
+          "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
+        },
+        "remove_ingredient": {
+          "name": "Ingredient name",
+          "description": "The ingredient to be removed"
+        }
+      }
+    },
+
+    "get_recommended_recipes_based_on_ingredients": {
+      "name": "Get recommended recipes based on ingredients",
+      "description": "Get recommended recipes based on ingredients from Mealie",
+      "fields": {
+        "config_entry_id": {
+          "name": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::name%]",
+          "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
+        }
+      }
+    },
+    "get_all_available_ingredients": {
+      "name": "Get all available ingredients",
+      "description": "Get all available ingredients that you have stored locally",
+      "fields": {
+        "config_entry_id": {
+          "name": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::name%]",
+          "description": "[%key:component::mealie::services::get_mealplan::fields::config_entry_id::description%]"
+        }
+      }
+    },
+
     "get_filtered_recipes_by_ingredients": {
       "name": "Get filtered recipes by ingredients",
       "description": "Get filtered recipes by ingredients from Mealie",
@@ -282,6 +333,7 @@
         "excluded_ingredients": {
           "name": "Excluded ingredients",
           "description": "A list of ingredients to exclude from the recipes"
+
         }
       }
     },
