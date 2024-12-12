@@ -73,3 +73,14 @@ Mealie and Home Assistant cannot by default communicate because they are not par
 4. Leave "Verify connection" unchecked.
 5. Click "Next".
 6. The Mealie integration will test the connection. If a connection could be established the integration will be added.
+
+### Add panels
+By default the integration has no frontend components.
+1. Clone https://github.com/AndreasWJ/group6-ui
+2. Start Home Assistant.
+3. Starting Home Assistant will create a config folder, /config.
+4. Copy configuration.yaml into config/
+5. Copy recipes-panel-99.js into config/www/
+6. Copy ingredients-panel-15.js into config/www/
+7. Restart Home Assistant.
+8. You should now see panels "Recipes" and "Ingredients" in the left menu.
