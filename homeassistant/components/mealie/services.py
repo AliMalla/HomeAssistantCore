@@ -32,6 +32,7 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
+    ATTR_ADD_INGREDIENT,
     ATTR_CONFIG_ENTRY_ID,
     ATTR_END_DATE,
     ATTR_ENTRY_TYPE,
@@ -45,8 +46,6 @@ from .const import (
     ATTR_RECIPE_ID,
     ATTR_RECIPE_NAME,
     ATTR_RECIPE_SLUG,
-    ATTR_MAX_CALORIES,
-    ATTR_ADD_INGREDIENT,
     ATTR_REMOVE_INGREDIENT,
     ATTR_START_DATE,
     ATTR_URL,
@@ -137,7 +136,7 @@ SERVICE_ENTER_NEW_INGREDIENT = "enter_new_ingredient"
 SERVICE_ENTER_NEW_INGREDIENT_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY_ID): str,
-        vol.Required(ATTR_ADD_INGREDIENT): str, # Ingredient to be added
+        vol.Required(ATTR_ADD_INGREDIENT): str,  # Ingredient to be added
     }
 )
 
@@ -145,11 +144,13 @@ SERVICE_REMOVE_INGREDIENT = "remove_ingredient"
 SERVICE_REMOVE_INGREDIENT_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY_ID): str,
-        vol.Required(ATTR_REMOVE_INGREDIENT): str, # Ingredient to be removed
+        vol.Required(ATTR_REMOVE_INGREDIENT): str,  # Ingredient to be removed
     }
 )
 
-SERVICE_GET_RECOMMENDED_RECIPES_BASED_ON_INGREDIENTS = "get_recommended_recipes_based_on_ingredients"
+SERVICE_GET_RECOMMENDED_RECIPES_BASED_ON_INGREDIENTS = (
+    "get_recommended_recipes_based_on_ingredients"
+)
 SERVICE_GET_RECOMMENDED_RECIPES_BASED_ON_INGREDIENTS_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY_ID): str,
@@ -523,13 +524,17 @@ def get_sync_enter_ingredient(hass: HomeAssistant):
             return response
 
         except sqlite3.Error as err:
-            _LOGGER.error("Database error while adding ingredient %s: %s", ingredient, err)
+            _LOGGER.error(
+                "Database error while adding ingredient %s: %s", ingredient, err
+            )
             raise HomeAssistantError(
                 f"Database error occurred while adding ingredient '{ingredient}': {err}"
             ) from err
 
         except Exception as err:
-            _LOGGER.error("Unexpected error while adding ingredient %s: %s", ingredient, err)
+            _LOGGER.error(
+                "Unexpected error while adding ingredient %s: %s", ingredient, err
+            )
             raise HomeAssistantError(
                 f"Unexpected error occurred while adding ingredient '{ingredient}': {err}"
             ) from err
@@ -593,13 +598,17 @@ def get_sync_remove_ingredient(hass: HomeAssistant):
             return response
 
         except sqlite3.Error as err:
-            _LOGGER.error("Database error while removing ingredient %s: %s", ingredient, err)
+            _LOGGER.error(
+                "Database error while removing ingredient %s: %s", ingredient, err
+            )
             raise HomeAssistantError(
                 f"Database error occurred while removing ingredient '{ingredient}': {err}"
             ) from err
 
         except Exception as err:
-            _LOGGER.error("Unexpected error while removing ingredient %s: %s", ingredient, err)
+            _LOGGER.error(
+                "Unexpected error while removing ingredient %s: %s", ingredient, err
+            )
             raise HomeAssistantError(
                 f"Unexpected error occurred while removing ingredient '{ingredient}': {err}"
             ) from err
@@ -613,7 +622,9 @@ def get_sync_remove_ingredient(hass: HomeAssistant):
 def get_async_get_recommended_recipes_based_on_ingredients(hass: HomeAssistant):
     """Get instance of async_get_recommended_recipes_based_on_ingredients."""
 
-    async def async_get_recommended_recipes_based_on_ingredients(call: ServiceCall) -> ServiceResponse:
+    async def async_get_recommended_recipes_based_on_ingredients(
+        call: ServiceCall,
+    ) -> ServiceResponse:
         """Get recommended recipes based on existing ingredients."""
         entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
 
@@ -667,14 +678,13 @@ def get_async_get_recommended_recipes_based_on_ingredients(hass: HomeAssistant):
             for ingredient in ingredients_notes:
                 if not ingredient_is_available:
                     break
-                for x in range(0,len(available_ingredients)):
-                    if(available_ingredients[x] in ingredient):
+                for x in range(len(available_ingredients)):
+                    if available_ingredients[x] in ingredient:
                         ingredient_is_available = True
                         break
-                    else:
-                        if x == len(available_ingredients) - 1 :
-                            ingredient_is_available = False
-                            break
+                    if x == len(available_ingredients) - 1:
+                        ingredient_is_available = False
+                        break
             if ingredient_is_available:
                 return asdict(recipe) if not isinstance(recipe, dict) else recipe
 
@@ -1169,7 +1179,7 @@ def setup_services(hass: HomeAssistant) -> None:
         SERVICE_GET_ALL_AVAILABLE_INGREDIENTS,
         get_sync_get_all_available_ingredients(hass),
         schema=SERVICE_GET_ALL_AVAILABLE_INGREDIENTS_SCHEMA,
-        supports_response=SupportsResponse.ONLY,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
         DOMAIN,
