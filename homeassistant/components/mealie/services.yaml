@@ -24,6 +24,50 @@ get_recipe:
       selector:
         text:
 
+get_attached_recipes:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: mealie
+    recipe_id:
+      required: true
+      selector:
+        text:
+
+attach_recipe:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: mealie
+    recipe_id:
+      required: true
+      selector:
+        text:
+    recipe_id_2:
+      required: true
+      selector:
+        text:
+
+remove_attached_recipe:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: mealie
+    recipe_id:
+      required: true
+      selector:
+        text:
+    recipe_id_2:
+      required: true
+      selector:
+        text:
+
 get_recipes:
   fields:
     config_entry_id:

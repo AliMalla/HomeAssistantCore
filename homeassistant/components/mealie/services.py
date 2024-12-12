@@ -43,6 +43,7 @@ from .const import (
     ATTR_NOTE_TEXT,
     ATTR_NOTE_TITLE,
     ATTR_RECIPE_ID,
+    ATTR_RECIPE_ID_2,
     ATTR_RECIPE_NAME,
     ATTR_RECIPE_SLUG,
     ATTR_MAX_CALORIES,
@@ -168,6 +169,15 @@ SERVICE_GET_FILTERED_RECIPES_BY_INGREDIENTS_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY_ID): str,
         vol.Required(ATTR_EXCULDED_INGREDIENTS): [str],
+    }
+)
+
+SERVICE_ATTACH_RECIPE = "attach_recipe"
+SERVICE_ATTACH_RECIPE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+        vol.Required(ATTR_RECIPE_ID): str,
+        vol.Required(ATTR_RECIPE_ID_2): str,
     }
 )
 
@@ -1005,6 +1015,137 @@ def get_async_heart_recipe(hass: HomeAssistant):
     return async_heart_recipe
 
 
+def get_async_attach_recipe(hass: HomeAssistant):
+    """Get instance of async_attach_recipe."""
+
+    async def async_attach_recipe(call: ServiceCall) -> ServiceResponse:
+        """Attach a recipe to another."""
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        recipe_id = call.data[ATTR_RECIPE_ID]
+        recipe_id_2 = call.data[ATTR_RECIPE_ID_2]
+        if recipe_id == recipe_id_2:
+            raise ValueError("A recipe can not reference itself.")
+
+        conn = sqlite3.connect("attached_recipes.db")
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+        INSERT OR IGNORE INTO attached_recipes (recipe_id, attached_recipe_id)
+        VALUES (?, ?)
+        """,
+            (
+                recipe_id,
+                recipe_id_2,
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+        client = entry.runtime_data.client
+        try:
+            recipe = await client.get_recipe(recipe_id)
+        except MealieConnectionError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="connection_error",
+            ) from err
+        except MealieNotFoundError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="recipe_not_found",
+                translation_placeholders={"recipe_id": recipe_id},
+            ) from err
+        return {"recipe": asdict(recipe)}
+
+    return async_attach_recipe
+
+
+def get_async_remove_attached_recipe(hass: HomeAssistant):
+    """Get instance of async_remove_attached_recipe."""
+
+    async def async_remove_attached_recipe(call: ServiceCall) -> ServiceResponse:
+        """Remove an attached recipe."""
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        recipe_id = call.data[ATTR_RECIPE_ID]
+        recipe_id_2 = call.data[ATTR_RECIPE_ID_2]
+        if recipe_id == recipe_id_2:
+            raise ValueError("A recipe can not reference itself.")
+
+        conn = sqlite3.connect("attached_recipes.db")
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+        DELETE FROM attached_recipes WHERE (recipe_id = ? AND attached_recipe_id = ?)
+        """,
+            (
+                recipe_id,
+                recipe_id_2,
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+        client = entry.runtime_data.client
+        try:
+            recipe = await client.get_recipe(recipe_id)
+        except MealieConnectionError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="connection_error",
+            ) from err
+        except MealieNotFoundError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="recipe_not_found",
+                translation_placeholders={"recipe_id": recipe_id},
+            ) from err
+        return {"recipe": asdict(recipe)}
+
+    return async_remove_attached_recipe
+
+
+def get_async_get_attached_recipes(hass: HomeAssistant):
+    """Get instance of get_attached_recipes."""
+
+    async def async_get_attached_recipes(call: ServiceCall) -> ServiceResponse:
+        """Get attached recipes."""
+        entry = async_get_entry(hass, call.data[ATTR_CONFIG_ENTRY_ID])
+        recipe_id = call.data[ATTR_RECIPE_ID]
+
+        conn = sqlite3.connect("attached_recipes.db")
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT attached_recipe_id
+            FROM attached_recipes
+            WHERE recipe_id = ?
+            """,
+            (recipe_id,),
+        )
+        rows = cursor.fetchall()
+        conn.close()
+
+        client = entry.runtime_data.client
+        try:
+            recipe = await client.get_recipe(recipe_id)
+        except MealieConnectionError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="connection_error",
+            ) from err
+        except MealieNotFoundError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="recipe_not_found",
+                translation_placeholders={"recipe_id": recipe_id},
+            ) from err
+
+        recipe_ids = [row[0] for row in rows]
+        return {"recipes": recipe_ids}
+
+    return async_get_attached_recipes
+
+
 def get_async_unheart_recipe(hass: HomeAssistant):
     """Remove a recipe to favourites."""
 
@@ -1201,6 +1342,13 @@ def setup_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN,
+        "get_attached_recipes",
+        get_async_get_attached_recipes(hass),
+        schema=SERVICE_GET_RECIPE_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
         SERVICE_FILTER_RECIPES_BY_POPULARITY,
         get_aync_filter_recipes_by_popularity(hass),
         schema=SERVICE_FILTER_RECIPES_BY_POPULARITY_SCHEMA,
@@ -1212,4 +1360,18 @@ def setup_services(hass: HomeAssistant) -> None:
         get_async_mark_recipe_as_cooked(hass),
         schema=SERVICE_MARK_RECIPE_AS_COOKED_SCHEMA,
         supports_response=False,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ATTACH_RECIPE,
+        get_async_attach_recipe(hass),
+        schema=SERVICE_ATTACH_RECIPE_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "remove_attached_recipe",
+        get_async_remove_attached_recipe(hass),
+        schema=SERVICE_ATTACH_RECIPE_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
     )

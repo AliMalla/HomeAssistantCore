@@ -36,6 +36,15 @@
     "get_recipes": {
       "service": "mdi:map-plus"
     },
+    "attach_recipe": {
+      "service": "mdi:map-plus"
+    },
+    "remove_attached_recipe": {
+      "service": "mdi:map-plus"
+    },
+    "get_attached_recipes": {
+      "service": "mdi:map-plus"
+    },
     "get_specific_recipes": {
       "service": "mdi:map-plus"
     },
